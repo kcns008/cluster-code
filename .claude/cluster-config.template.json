@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json.schemastore.org/cluster-code-config.json",
+  "version": "1.0.0",
+  "cluster": {
+    "default_context": null,
+    "default_namespace": "default",
+    "current_cluster": null,
+    "cluster_type": null,
+    "connection_time": null,
+    "kubeconfig_path": "~/.kube/config",
+    "preferences": {
+      "auto_diagnose": true,
+      "show_resource_usage": true,
+      "parallel_analysis": true,
+      "cache_timeout": 300,
+      "log_level": "info"
+    }
+  },
+  "plugins": {
+    "cluster-core": {
+      "enabled": true,
+      "auto_load": true,
+      "config": {
+        "default_timeout": 30,
+        "retry_attempts": 3
+      }
+    },
+    "k8sgpt-analyzers": {
+      "enabled": true,
+      "analysis_depth": "standard",
+      "analyzers": {
+        "pod": true,
+        "service": true,
+        "pvc": true,
+        "node": true,
+        "deployment": true,
+        "ingress": false,
+        "hpa": false,
+        "network_policy": false
+      },
+      "ai_provider": "anthropic",
+      "cache_results": true
+    },
+    "cluster-openshift": {
+      "enabled": false,
+      "auto_detect": true,
+      "features": {
+        "routes": true,
+        "operators": true,
+        "build_configs": true,
+        "projects": true
+      }
+    },
+    "gitops": {
+      "enabled": false,
+      "default_tool": "helm",
+      "repositories": [],
+      "auto_sync": false
+    }
+  },
+  "diagnostics": {
+    "enabled_analyzers": [
+      "pod",
+      "service",
+      "pvc",
+      "node",
+      "deployment",
+      "event"
+    ],
+    "severity_threshold": "warning",
+    "include_events": true,
+    "max_results": 50,
+    "exclude_namespaces": [
+      "kube-system",
+      "kube-public",
+      "kube-node-lease"
+    ],
+    "custom_filters": []
+  },
+  "monitoring": {
+    "metrics_server": {
+      "enabled": true,
+      "timeout": 10
+    },
+    "prometheus": {
+      "enabled": false,
+      "address": "",
+      "port": 9090
+    },
+    "alertmanager": {
+      "enabled": false,
+      "address": "",
+      "port": 9093
+    },
+    "grafana": {
+      "enabled": false,
+      "address": "",
+      "port": 3000
+    }
+  },
+  "security": {
+    "rbac_check": true,
+    "network_policy_analysis": false,
+    "pod_security_standards": false,
+    "image_vulnerability_scan": false,
+    "exclude_patterns": []
+  },
+  "cloud_providers": {
+    "aws": {
+      "enabled": false,
+      "region": "",
+      "account_id": "",
+      "eks": {
+        "enabled": false,
+        "cluster_name": ""
+      },
+      "rosa": {
+        "enabled": false,
+        "cluster_id": ""
+      }
+    },
+    "azure": {
+      "enabled": false,
+      "subscription_id": "",
+      "resource_group": "",
+      "aks": {
+        "enabled": false,
+        "cluster_name": ""
+      },
+      "aro": {
+        "enabled": false,
+        "cluster_name": ""
+      }
+    },
+    "gcp": {
+      "enabled": false,
+      "project_id": "",
+      "region": "",
+      "gke": {
+        "enabled": false,
+        "cluster_name": "",
+        "zone": ""
+      }
+    }
+  },
+  "preferences": {
+    "ui": {
+      "theme": "auto",
+      "compact_mode": false,
+      "show_timestamps": true,
+      "show_exit_codes": true
+    },
+    "output": {
+      "format": "table",
+      "verbose": false,
+      "json_logs": false,
+      "max_log_lines": 1000
+    },
+    "performance": {
+      "parallel_requests": true,
+      "request_timeout": 30,
+      "cache_enabled": true,
+      "cache_ttl": 300
+    }
+  },
+  "notifications": {
+    "enabled": false,
+    "webhook_url": "",
+    "slack_token": "",
+    "teams_url": "",
+    "email": {
+      "enabled": false,
+      "smtp_server": "",
+      "smtp_port": 587,
+      "username": "",
+      "recipients": []
+    }
+  },
+  "automation": {
+    "auto_scaling": {
+      "enabled": false,
+      "rules": []
+    },
+    "backup": {
+      "enabled": false,
+      "schedule": "",
+      "retention_days": 30,
+      "storage_location": ""
+    },
+    "cleanup": {
+      "enabled": false,
+      "schedule": "",
+      "rules": []
+    }
+  },
+  "integrations": {
+    "helm": {
+      "enabled": false,
+      "default_repository": "",
+      "repositories": {}
+    },
+    "kustomize": {
+      "enabled": false,
+      "default_overlay": ""
+    },
+    "argocd": {
+      "enabled": false,
+      "server_address": "",
+      "auth_token": ""
+    },
+    "flux": {
+      "enabled": false,
+      "git_repository": "",
+      "git_branch": ""
+    }
+  },
+  "logging": {
+    "level": "info",
+    "file": "",
+    "max_size": "100MB",
+    "max_files": 5,
+    "format": "json"
+  },
+  "experimental": {
+    "features": [],
+    "ai_analysis": true,
+    "multi_cluster": false,
+    "advanced_diagnostics": false
+  }
+}

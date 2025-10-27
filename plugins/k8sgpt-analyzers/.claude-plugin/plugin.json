@@ -1,0 +1,39 @@
+{
+  "name": "k8sgpt-analyzers",
+  "version": "1.0.0",
+  "description": "AI-powered Kubernetes cluster diagnostics using enhanced K8sGPT analyzers",
+  "author": "Cluster Code Team",
+  "license": "MIT",
+  "category": "diagnostics",
+  "keywords": ["k8sgpt", "kubernetes", "diagnostics", "ai", "troubleshooting"],
+  "commands": [
+    "analyze-pod",
+    "analyze-service",
+    "analyze-pvc",
+    "analyze-node",
+    "analyze-deployment"
+  ],
+  "agents": [
+    "k8sgpt-runner"
+  ],
+  "dependencies": {
+    "kubectl": ">=1.28.0",
+    "claude-code": ">=1.0.0"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(kubectl:*)",
+      "Bash(oc:*)",
+      "Read(.*\\.log)",
+      "Read(.*\\.yaml)"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/cluster-code.git"
+  },
+  "homepage": "https://docs.cluster-code.io/plugins/k8sgpt-analyzers",
+  "bugs": {
+    "url": "https://github.com/your-org/cluster-code/issues"
+  }
+}

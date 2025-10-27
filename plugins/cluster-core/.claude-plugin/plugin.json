@@ -1,0 +1,43 @@
+{
+  "name": "cluster-core",
+  "version": "1.0.0",
+  "description": "Core Kubernetes cluster operations and resource management commands",
+  "author": "Cluster Code Team",
+  "license": "MIT",
+  "category": "cluster-management",
+  "keywords": ["kubernetes", "cluster", "operations", "resources"],
+  "commands": [
+    "node-status",
+    "service-describe",
+    "pvc-status",
+    "config-view",
+    "resource-top",
+    "namespace-switch"
+  ],
+  "agents": [
+    "workload-analyzer",
+    "storage-analyzer"
+  ],
+  "dependencies": {
+    "kubectl": ">=1.28.0",
+    "claude-code": ">=1.0.0"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(kubectl:*)",
+      "Bash(oc:*)",
+      "Read(.*\\.yaml)",
+      "Read(.*\\.yml)",
+      "Write(.*\\.yaml)",
+      "Write(.*\\.yml)"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/cluster-code.git"
+  },
+  "homepage": "https://docs.cluster-code.io/plugins/cluster-core",
+  "bugs": {
+    "url": "https://github.com/your-org/cluster-code/issues"
+  }
+}

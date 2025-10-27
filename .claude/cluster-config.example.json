@@ -1,0 +1,35 @@
+{
+  "cluster": {
+    "default_context": "my-cluster",
+    "default_namespace": "production",
+    "cluster_type": "kubernetes",
+    "connection_time": "2025-01-26T10:00:00Z",
+    "preferences": {
+      "auto_diagnose": true,
+      "parallel_analysis": true,
+      "log_level": "info"
+    }
+  },
+  "plugins": {
+    "cluster-core": {
+      "enabled": true,
+      "auto_load": true
+    },
+    "k8sgpt-analyzers": {
+      "enabled": true,
+      "analysis_depth": "standard",
+      "enabled_analyzers": ["pod", "service", "pvc", "node", "deployment"]
+    }
+  },
+  "diagnostics": {
+    "enabled_analyzers": ["pod", "service", "pvc", "node", "deployment", "event"],
+    "severity_threshold": "warning",
+    "include_events": true,
+    "exclude_namespaces": ["kube-system", "kube-public"]
+  },
+  "monitoring": {
+    "metrics_server": {
+      "enabled": true
+    }
+  }
+}
