@@ -20,7 +20,7 @@
   ],
   "dependencies": {
     "kubectl": ">=1.28.0",
-    "claude-code": ">=1.0.0"
+    "cluster-code": ">=1.0.0"
   },
   "permissions": {
     "allow": [

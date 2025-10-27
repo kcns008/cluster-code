@@ -1,12 +1,12 @@
 # Cluster Code
 
-![](https://img.shields.io/badge/Kubernetes-1.28%2B-blue?style=flat-square) ![](https://img.shields.io/badge/OpenShift-4.15%2B-red?style=flat-square) [![Cluster Code]](https://github.com/anthropics/claude-code)
+![](https://img.shields.io/badge/Kubernetes-1.28%2B-blue?style=flat-square) ![](https://img.shields.io/badge/OpenShift-4.15%2B-red?style=flat-square) [![Cluster Code]](https://github.com/your-org/cluster-code)
 
 [Cluster Code]: https://img.shields.io/badge/Cluster%20Code-v1.0.0-brightgreen.svg?style=flat-square
 
-Cluster Code is a comprehensive CLI tool for building, maintaining, and troubleshooting Kubernetes and OpenShift clusters across on-premises, AWS, Azure, and GCP environments. Built on Claude Code's agentic framework, it provides AI-powered cluster diagnostics, multi-cloud provisioning, and intelligent troubleshooting capabilities.
+Cluster Code is a comprehensive CLI tool for building, maintaining, and troubleshooting Kubernetes and OpenShift clusters across on-premises, AWS, Azure, and GCP environments. Built on Cluster Code's agentic framework, it provides AI-powered cluster diagnostics, multi-cloud provisioning, and intelligent troubleshooting capabilities.
 
-**Built with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) and enhanced with [K8sGPT](https://k8sgpt.ai/) analyzers.**
+**Enhanced with [K8sGPT](https://k8sgpt.ai/) analyzers and powered by advanced AI diagnostics.**
 
 <img src="./demo.gif" />
 
@@ -15,7 +15,7 @@ Cluster Code is a comprehensive CLI tool for building, maintaining, and troubles
 1. Install Cluster Code:
 
 ```sh
-npm install -g @anthropic-ai/claude-code
+npm install -g @cluster-code/cli
 git clone https://github.com/your-org/cluster-code.git
 cd cluster-code
 ```
@@ -135,11 +135,11 @@ Join the [Cluster Code Discord](https://discord.gg/cluster-code) to connect with
 
 ## Data collection, usage, and retention
 
-When you use Claude Code, we collect feedback, which includes usage data (such as code acceptance or rejections), associated conversation data, and user feedback submitted via the `/bug` command.
+When you use Cluster Code, we collect feedback, which includes usage data (such as code acceptance or rejections), associated conversation data, and user feedback submitted via the `/bug` command.
 
 ### How we use your data
 
-See our [data usage policies](https://docs.anthropic.com/en/docs/claude-code/data-usage).
+See our [data usage policies](https://docs.cluster-code.io/data-usage).
 
 ### Privacy safeguards
 

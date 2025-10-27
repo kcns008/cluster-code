@@ -22,7 +22,7 @@ The **cluster-core** plugin provides essential Kubernetes cluster operations and
 ```bash
 # The plugin is included with Cluster Code
 # Activate it in your current session:
-claude plugin activate cluster-core
+cluster-code plugin activate cluster-core
 ```
 
 ### Basic Usage
@@ -60,7 +60,7 @@ pvc-status my-data-pvc --namespace production
 #### Analyze Workloads
 ```bash
 # Start the workload analyzer agent
-claude agent workload-analyzer
+cluster-code agent workload-analyzer
 
 # Get comprehensive workload analysis
 ```
@@ -179,7 +179,7 @@ A specialized AI agent that analyzes Kubernetes workloads comprehensively.
 
 **Launch:**
 ```bash
-claude agent workload-analyzer
+cluster-code agent workload-analyzer
 ```
 
 **Analysis Coverage:**
@@ -202,7 +202,7 @@ Advanced storage analysis and optimization agent.
 
 **Launch:**
 ```bash
-claude agent storage-analyzer
+cluster-code agent storage-analyzer
 ```
 
 **Analysis Coverage:**
@@ -228,10 +228,10 @@ The plugin uses these permissions:
 **Plugin not found:**
 ```bash
 # Verify plugin installation
-claude plugin list
+cluster-code plugin list
 
 # Install if missing
-claude plugin install cluster-core
+cluster-code plugin install cluster-core
 ```
 
 **kubectl not found:**
@@ -280,7 +280,7 @@ git clone https://github.com/your-org/cluster-code.git
 cd cluster-code/plugins/cluster-core
 
 # Test changes locally
-claude plugin link ./cluster-core
+cluster-code plugin link ./cluster-core
 
 # Run tests
 npm test
