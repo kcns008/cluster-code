@@ -47,7 +47,8 @@ cluster-code chat
 - Integrated K8sGPT analyzers for intelligent troubleshooting
 - Parallel analysis agents for comprehensive cluster health
 - Real-time log analysis and event correlation
-- Interactive problem-solving with Claude AI
+- Interactive problem-solving with advanced AI diagnostics
+- **Local LLM Support**: Use self-hosted models for privacy and cost control
 
 ### 🛠️ Operations & Maintenance
 - Automated cluster upgrades and patching
@@ -98,6 +99,9 @@ cluster-code chat
 # Get help with specific issues
 cluster-code chat "Why are my pods crashing?"
 cluster-code chat "Help me debug service connectivity"
+
+# Use local LLM for privacy
+cluster-code --model local-cluster-model chat "Analyze security issues in my cluster"
 ```
 
 ### Resource Management
@@ -117,6 +121,7 @@ cluster-code describe pvc my-data-volume
 ## Documentation
 
 - **[Getting Started Guide](docs/getting-started.md)** - Installation and first cluster connection
+- **[Local LLM Support](docs/local-llm-support.md)** - Configure self-hosted models for privacy and control
 - **[Troubleshooting Playbook](docs/troubleshooting-playbook.md)** - Common issues and solutions
 - **[Cluster Connection Guide](docs/cluster-connection.md)** - Multi-cluster configuration
 - **[API Reference](docs/api-reference.md)** - Commands and agents documentation
