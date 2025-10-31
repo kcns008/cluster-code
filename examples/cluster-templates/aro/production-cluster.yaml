@@ -1,0 +1,369 @@
+# Azure Red Hat OpenShift (ARO) Production Cluster Template
+# This template creates a production-ready ARO cluster
+
+apiVersion: cluster-code.io/v1alpha1
+kind: ClusterTemplate
+metadata:
+  name: aro-production
+  description: Production-ready ARO cluster with enterprise features
+spec:
+  provider: azure
+  clusterType: aro
+
+  # Azure Configuration
+  azure:
+    subscriptionId: "${AZURE_SUBSCRIPTION_ID}"
+    resourceGroup: "production-aro-rg"
+    location: "eastus2"
+    tags:
+      Environment: production
+      ManagedBy: cluster-code
+      Platform: OpenShift
+      CostCenter: engineering
+
+  # Cluster Configuration
+  cluster:
+    name: "prod-aro-cluster"
+    openshiftVersion: "4.15.0"
+    domain: "aro.example.com"  # Custom domain (optional)
+
+    # Red Hat Pull Secret (required)
+    pullSecret: "${RED_HAT_PULL_SECRET}"  # From https://cloud.redhat.com/openshift/install/azure/aro-provisioned
+
+    # Network Configuration
+    network:
+      vnetName: "prod-aro-vnet"
+      vnetCIDR: "10.0.0.0/20"
+
+      # Master subnet
+      masterSubnet:
+        name: "master-subnet"
+        cidr: "10.0.0.0/23"
+        privateLink: true
+
+      # Worker subnet
+      workerSubnet:
+        name: "worker-subnet"
+        cidr: "10.0.2.0/23"
+
+      # Pod and Service CIDRs
+      podCIDR: "10.128.0.0/14"
+      serviceCIDR: "172.30.0.0/16"
+
+      # Network security
+      apiServerVisibility: Public  # Public or Private
+      ingressVisibility: Public    # Public or Private
+
+    # Master Nodes
+    master:
+      vmSize: "Standard_D8s_v3"
+      diskEncryption: true
+      availabilityZones: [1, 2, 3]
+
+    # Worker Nodes
+    worker:
+      vmSize: "Standard_D4s_v3"
+      diskSizeGB: 128
+      count: 5
+      diskEncryption: true
+      availabilityZones: [1, 2, 3]
+
+    # Service Principal (alternative to managed identity)
+    servicePrincipal:
+      clientId: "${AZURE_CLIENT_ID}"
+      clientSecret: "${AZURE_CLIENT_SECRET}"
+
+    # FIPs Compliance (if required)
+    fipsEnabled: false
+
+  # OpenShift Configuration
+  openshift:
+    # OAuth Configuration
+    oauth:
+      # Azure AD integration
+      azureAD:
+        enabled: true
+        clientId: "${AZURE_AD_CLIENT_ID}"
+        clientSecret: "${AZURE_AD_CLIENT_SECRET}"
+        tenantId: "${AZURE_AD_TENANT_ID}"
+
+    # Cluster Monitoring
+    monitoring:
+      enabled: true
+      retention: 15d
+      storage:
+        size: 100Gi
+        storageClass: managed-premium
+
+    # Cluster Logging (EFK Stack)
+    logging:
+      enabled: true
+      elasticsearch:
+        nodeCount: 3
+        storage:
+          size: 200Gi
+          storageClass: managed-premium
+      retention:
+        app: 7d
+        infra: 7d
+        audit: 7d
+
+    # Image Registry
+    imageRegistry:
+      storage:
+        azureContainer:
+          accountName: "${STORAGE_ACCOUNT_NAME}"
+          container: "image-registry"
+
+    # Certificate Management
+    certificates:
+      # API Server Certificate
+      api:
+        namedCertificate:
+          name: api-cert
+          certFile: "${API_CERT_PATH}"
+          keyFile: "${API_KEY_PATH}"
+
+      # Ingress Certificate
+      ingress:
+        namedCertificate:
+          name: ingress-cert
+          certFile: "${INGRESS_CERT_PATH}"
+          keyFile: "${INGRESS_KEY_PATH}"
+
+  # Post-Installation: Operators
+  operators:
+    # Install OpenShift GitOps (ArgoCD)
+    - name: openshift-gitops-operator
+      namespace: openshift-operators
+      channel: stable
+      installPlanApproval: Automatic
+
+    # Install OpenShift Pipelines (Tekton)
+    - name: openshift-pipelines-operator-rh
+      namespace: openshift-operators
+      channel: stable
+      installPlanApproval: Automatic
+
+    # Install Red Hat Service Mesh (Istio)
+    - name: servicemeshoperator
+      namespace: openshift-operators
+      channel: stable
+      installPlanApproval: Manual
+
+    # Install Elasticsearch Operator
+    - name: elasticsearch-operator
+      namespace: openshift-operators-redhat
+      channel: stable
+      installPlanApproval: Automatic
+
+    # Install Advanced Cluster Security (if licensed)
+    - name: rhacs-operator
+      namespace: openshift-operators
+      channel: stable
+      installPlanApproval: Manual
+      enabled: false
+
+  # Post-Installation: Projects and Resources
+  postInstall:
+    # Create application projects
+    - name: create-projects
+      type: oc
+      commands:
+        - oc new-project production --display-name="Production Applications"
+        - oc new-project staging --display-name="Staging Environment"
+        - oc new-project development --display-name="Development Environment"
+
+    # Configure project resource quotas
+    - name: configure-quotas
+      type: manifest
+      manifests:
+        - apiVersion: v1
+          kind: ResourceQuota
+          metadata:
+            name: compute-quota
+            namespace: production
+          spec:
+            hard:
+              requests.cpu: "100"
+              requests.memory: 200Gi
+              limits.cpu: "200"
+              limits.memory: 400Gi
+              persistentvolumeclaims: "50"
+
+    # Configure limit ranges
+    - name: configure-limits
+      type: manifest
+      manifests:
+        - apiVersion: v1
+          kind: LimitRange
+          metadata:
+            name: core-limits
+            namespace: production
+          spec:
+            limits:
+              - type: Container
+                default:
+                  cpu: "1"
+                  memory: 1Gi
+                defaultRequest:
+                  cpu: 100m
+                  memory: 128Mi
+
+    # Configure network policies
+    - name: default-network-policies
+      type: manifest
+      manifests:
+        - apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: deny-by-default
+            namespace: production
+          spec:
+            podSelector: {}
+            policyTypes:
+              - Ingress
+              - Egress
+
+  # Security Configuration
+  security:
+    # Security Context Constraints (SCC)
+    customSCC:
+      - name: restricted-custom
+        priority: 10
+        allowPrivilegedContainer: false
+        allowHostDirVolumePlugin: false
+        allowHostNetwork: false
+        allowHostPorts: false
+        allowHostPID: false
+        allowHostIPC: false
+        readOnlyRootFilesystem: false
+        runAsUser:
+          type: MustRunAsRange
+        seLinuxContext:
+          type: MustRunAs
+        fsGroup:
+          type: MustRunAs
+        supplementalGroups:
+          type: RunAsAny
+        volumes:
+          - configMap
+          - downwardAPI
+          - emptyDir
+          - persistentVolumeClaim
+          - projected
+          - secret
+
+    # RBAC Configuration
+    rbac:
+      clusterAdmins:
+        - "${ADMIN_USER_1}"
+        - "${ADMIN_USER_2}"
+
+      projectAdmins:
+        production:
+          - "${PROD_ADMIN_USER}"
+        staging:
+          - "${STAGING_ADMIN_USER}"
+        development:
+          - "${DEV_ADMIN_USER}"
+
+    # Compliance
+    compliance:
+      # OpenShift Compliance Operator
+      enabled: true
+      profiles:
+        - ocp4-cis
+        - ocp4-moderate
+
+  # Backup and Disaster Recovery
+  backup:
+    # OADP (OpenShift API for Data Protection)
+    oadp:
+      enabled: true
+      backupStorageLocation:
+        provider: azure
+        bucket: "${BACKUP_STORAGE_CONTAINER}"
+        credential: "${AZURE_BACKUP_CREDENTIALS}"
+      schedule:
+        - name: daily-backup
+          schedule: "0 2 * * *"
+          ttl: 720h  # 30 days
+        - name: weekly-backup
+          schedule: "0 3 * * 0"
+          ttl: 2160h  # 90 days
+
+  # Monitoring and Alerting
+  monitoring:
+    # Prometheus
+    prometheus:
+      retention: 15d
+      storage:
+        size: 100Gi
+        storageClass: managed-premium
+
+    # Alertmanager
+    alertmanager:
+      config:
+        receivers:
+          - name: email
+            email_configs:
+              - to: "${ALERT_EMAIL}"
+                from: "aro-alerts@example.com"
+                smarthost: "${SMTP_SERVER}:587"
+          - name: slack
+            slack_configs:
+              - api_url: "${SLACK_WEBHOOK_URL}"
+                channel: "#aro-alerts"
+
+        route:
+          receiver: email
+          group_by: ['alertname', 'cluster', 'service']
+          routes:
+            - match:
+                severity: critical
+              receiver: slack
+
+  # Cost Optimization
+  costOptimization:
+    # Machine autoscaling
+    machineAutoscaler:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 10
+
+    # Cluster autoscaling
+    clusterAutoscaler:
+      enabled: true
+      resourceLimits:
+        maxNodesTotal: 20
+        cores:
+          min: 8
+          max: 64
+        memory:
+          min: 32
+          max: 256
+
+# Usage:
+# 1. Get Red Hat pull secret from https://cloud.redhat.com/openshift/install/azure/aro-provisioned
+#
+# 2. Set environment variables:
+#    export AZURE_SUBSCRIPTION_ID="your-subscription-id"
+#    export RED_HAT_PULL_SECRET='{"auths":{"cloud.openshift.com":...}}'
+#    export AZURE_AD_TENANT_ID="your-tenant-id"
+#    export AZURE_CLIENT_ID="your-client-id"
+#    export AZURE_CLIENT_SECRET="your-client-secret"
+#    export ADMIN_USER_1="user1@example.com"
+#    export ALERT_EMAIL="ops@example.com"
+#    export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+#
+# 3. Apply template:
+#    cluster-code apply-template --template examples/cluster-templates/aro/production-cluster.yaml
+#
+# 4. Or use individual command:
+#    cluster-code azure-cluster-create --type aro --config examples/cluster-templates/aro/production-cluster.yaml
+
+# References:
+# - ARO Docs: https://learn.microsoft.com/en-us/azure/openshift/
+# - OpenShift 4.15 Docs: https://docs.redhat.com/en/documentation/openshift_container_platform/4.15
+# - ARO Experts: https://cloud.redhat.com/experts/aro/

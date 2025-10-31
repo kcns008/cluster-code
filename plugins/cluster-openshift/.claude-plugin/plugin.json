@@ -1,0 +1,58 @@
+{
+  "name": "cluster-openshift",
+  "version": "1.0.0",
+  "description": "OpenShift-specific features including Routes, Operators, BuildConfigs, and Projects",
+  "author": "Cluster Code Team",
+  "license": "MIT",
+  "category": "cluster-management",
+  "keywords": ["openshift", "routes", "operators", "buildconfigs", "projects"],
+  "commands": [
+    "routes-analyze",
+    "operator-install",
+    "operator-list",
+    "operator-upgrade",
+    "buildconfig-analyze",
+    "project-create",
+    "project-switch"
+  ],
+  "agents": [
+    "route-inspector",
+    "operator-manager"
+  ],
+  "dependencies": {
+    "oc": ">=4.15.0",
+    "kubectl": ">=1.28.0",
+    "cluster-code": ">=1.0.0"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(oc:*)",
+      "Bash(kubectl:*)",
+      "Read(.*\\.yaml)",
+      "Read(.*\\.yml)",
+      "Write(.*\\.yaml)",
+      "Write(.*\\.yml)"
+    ]
+  },
+  "configuration": {
+    "auto_detect": {
+      "type": "boolean",
+      "description": "Auto-detect OpenShift clusters",
+      "default": true
+    },
+    "features": {
+      "routes": true,
+      "operators": true,
+      "build_configs": true,
+      "projects": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/cluster-code.git"
+  },
+  "homepage": "https://docs.cluster-code.io/plugins/cluster-openshift",
+  "bugs": {
+    "url": "https://github.com/your-org/cluster-code/issues"
+  }
+}

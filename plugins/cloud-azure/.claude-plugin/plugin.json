@@ -1,0 +1,77 @@
+{
+  "name": "cloud-azure",
+  "version": "1.0.0",
+  "description": "Azure cloud provider integration for AKS and ARO cluster management",
+  "author": "Cluster Code Team",
+  "license": "MIT",
+  "category": "cloud-provider",
+  "keywords": ["azure", "aks", "aro", "openshift", "cloud"],
+  "commands": [
+    "azure-cluster-create",
+    "azure-cluster-list",
+    "azure-cluster-connect",
+    "azure-cluster-delete",
+    "azure-cluster-scale",
+    "aro-install",
+    "aks-upgrade"
+  ],
+  "agents": [
+    "azure-provisioner",
+    "aro-specialist"
+  ],
+  "mcp_servers": [
+    "azure-operations"
+  ],
+  "dependencies": {
+    "az": ">=2.50.0",
+    "kubectl": ">=1.28.0",
+    "cluster-code": ">=1.0.0"
+  },
+  "optional_dependencies": {
+    "terraform": ">=1.5.0",
+    "helm": ">=3.12.0"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(az:*)",
+      "Bash(kubectl:*)",
+      "Bash(oc:*)",
+      "Bash(helm:*)",
+      "Bash(terraform:*)",
+      "Read(.*\\.yaml)",
+      "Read(.*\\.yml)",
+      "Read(.*\\.json)",
+      "Read(.*\\.tf)",
+      "Write(.*\\.yaml)",
+      "Write(.*\\.yml)",
+      "Write(.*\\.json)",
+      "Write(.*\\.tf)"
+    ]
+  },
+  "configuration": {
+    "subscription_id": {
+      "type": "string",
+      "description": "Azure subscription ID",
+      "required": true,
+      "env": "AZURE_SUBSCRIPTION_ID"
+    },
+    "resource_group": {
+      "type": "string",
+      "description": "Default Azure resource group",
+      "required": false
+    },
+    "region": {
+      "type": "string",
+      "description": "Default Azure region",
+      "default": "eastus"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/cluster-code.git"
+  },
+  "homepage": "https://docs.cluster-code.io/plugins/cloud-azure",
+  "bugs": {
+    "url": "https://github.com/your-org/cluster-code/issues"
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "name": "gitops",
+  "version": "1.0.0",
+  "description": "GitOps workflows with Helm, Kustomize, ArgoCD, and Flux integration",
+  "author": "Cluster Code Team",
+  "license": "MIT",
+  "category": "deployment",
+  "keywords": ["gitops", "helm", "kustomize", "argocd", "flux"],
+  "commands": [
+    "helm-deploy",
+    "helm-upgrade",
+    "helm-rollback",
+    "kustomize-build",
+    "kustomize-apply",
+    "argocd-sync",
+    "gitops-init"
+  ],
+  "agents": [
+    "helm-manager",
+    "gitops-advisor"
+  ],
+  "dependencies": {
+    "kubectl": ">=1.28.0",
+    "helm": ">=3.12.0",
+    "cluster-code": ">=1.0.0"
+  },
+  "optional_dependencies": {
+    "kustomize": ">=5.0.0",
+    "argocd": ">=2.8.0",
+    "flux": ">=2.0.0"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(kubectl:*)",
+      "Bash(helm:*)",
+      "Bash(kustomize:*)",
+      "Bash(argocd:*)",
+      "Bash(flux:*)",
+      "Bash(git:*)",
+      "Read(.*\\.yaml)",
+      "Read(.*\\.yml)",
+      "Read(.*\\.tpl)",
+      "Read(.*/Chart\\.yaml)",
+      "Read(.*/values\\.yaml)",
+      "Read(.*/kustomization\\.yaml)",
+      "Write(.*\\.yaml)",
+      "Write(.*\\.yml)"
+    ]
+  },
+  "configuration": {
+    "default_tool": {
+      "type": "string",
+      "enum": ["helm", "kustomize", "argocd", "flux"],
+      "default": "helm",
+      "description": "Default GitOps tool"
+    },
+    "repositories": {
+      "type": "array",
+      "description": "Git repositories for GitOps",
+      "default": []
+    },
+    "auto_sync": {
+      "type": "boolean",
+      "description": "Enable automatic synchronization",
+      "default": false
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/cluster-code.git"
+  },
+  "homepage": "https://docs.cluster-code.io/plugins/gitops",
+  "bugs": {
+    "url": "https://github.com/your-org/cluster-code/issues"
+  }
+}
