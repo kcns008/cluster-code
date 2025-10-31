@@ -1,0 +1,408 @@
+{
+  "name": "aws-operations",
+  "version": "1.0.0",
+  "description": "MCP server for AWS EKS and ROSA operations",
+  "protocol_version": "2024-11-05",
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": false
+  },
+  "tools": [
+    {
+      "name": "aws_list_clusters",
+      "description": "List all EKS and ROSA clusters in AWS account/region",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "AWS region"
+          },
+          "cluster_type": {
+            "type": "string",
+            "enum": ["eks", "rosa", "all"],
+            "default": "all",
+            "description": "Type of clusters to list"
+          },
+          "profile": {
+            "type": "string",
+            "description": "AWS CLI profile (optional)"
+          }
+        }
+      }
+    },
+    {
+      "name": "aws_get_cluster_credentials",
+      "description": "Get kubeconfig credentials for an EKS or ROSA cluster",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "AWS region"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "cluster_type": {
+            "type": "string",
+            "enum": ["eks", "rosa"],
+            "description": "Type of cluster"
+          },
+          "role_arn": {
+            "type": "string",
+            "description": "IAM role ARN to assume (EKS only)"
+          },
+          "profile": {
+            "type": "string",
+            "description": "AWS CLI profile"
+          }
+        },
+        "required": ["region", "cluster_name", "cluster_type"]
+      }
+    },
+    {
+      "name": "aws_create_eks_cluster",
+      "description": "Create a new EKS cluster",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "AWS region"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "kubernetes_version": {
+            "type": "string",
+            "description": "Kubernetes version (e.g., 1.28)"
+          },
+          "role_arn": {
+            "type": "string",
+            "description": "IAM role ARN for cluster"
+          },
+          "subnet_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "VPC subnet IDs (minimum 2)"
+          },
+          "security_group_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Security group IDs"
+          },
+          "endpoint_private_access": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable private API endpoint"
+          },
+          "endpoint_public_access": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable public API endpoint"
+          },
+          "logging": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+            },
+            "description": "Control plane logging types"
+          },
+          "tags": {
+            "type": "object",
+            "description": "Resource tags",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["region", "cluster_name", "role_arn", "subnet_ids"]
+      }
+    },
+    {
+      "name": "aws_create_rosa_cluster",
+      "description": "Create a new Red Hat OpenShift Service on AWS (ROSA) cluster",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "region": {
+            "type": "string",
+            "description": "AWS region"
+          },
+          "version": {
+            "type": "string",
+            "description": "OpenShift version (e.g., 4.15.0)"
+          },
+          "compute_nodes": {
+            "type": "integer",
+            "default": 2,
+            "description": "Number of compute nodes"
+          },
+          "compute_machine_type": {
+            "type": "string",
+            "default": "m5.xlarge",
+            "description": "EC2 instance type for compute nodes"
+          },
+          "multi_az": {
+            "type": "boolean",
+            "default": false,
+            "description": "Deploy across multiple availability zones"
+          },
+          "private": {
+            "type": "boolean",
+            "default": false,
+            "description": "Create private cluster"
+          },
+          "subnet_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "VPC subnet IDs"
+          },
+          "sts": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use AWS STS for authentication"
+          },
+          "hosted_cp": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use hosted control plane (HyperShift)"
+          }
+        },
+        "required": ["cluster_name", "region"]
+      }
+    },
+    {
+      "name": "aws_delete_cluster",
+      "description": "Delete an EKS or ROSA cluster",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "AWS region"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "cluster_type": {
+            "type": "string",
+            "enum": ["eks", "rosa"],
+            "description": "Type of cluster"
+          },
+          "wait": {
+            "type": "boolean",
+            "default": true,
+            "description": "Wait for deletion to complete"
+          }
+        },
+        "required": ["region", "cluster_name", "cluster_type"]
+      }
+    },
+    {
+      "name": "aws_create_nodegroup",
+      "description": "Create an EKS managed node group",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "AWS region"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "EKS cluster name"
+          },
+          "nodegroup_name": {
+            "type": "string",
+            "description": "Node group name"
+          },
+          "subnet_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Subnet IDs for node group"
+          },
+          "node_role": {
+            "type": "string",
+            "description": "IAM role ARN for nodes"
+          },
+          "instance_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": ["t3.medium"],
+            "description": "EC2 instance types"
+          },
+          "desired_size": {
+            "type": "integer",
+            "default": 2,
+            "description": "Desired number of nodes"
+          },
+          "min_size": {
+            "type": "integer",
+            "default": 1,
+            "description": "Minimum number of nodes"
+          },
+          "max_size": {
+            "type": "integer",
+            "default": 4,
+            "description": "Maximum number of nodes"
+          },
+          "disk_size": {
+            "type": "integer",
+            "default": 20,
+            "description": "Disk size in GB"
+          },
+          "labels": {
+            "type": "object",
+            "description": "Node labels",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "taints": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Node taints"
+          }
+        },
+        "required": ["region", "cluster_name", "nodegroup_name", "subnet_ids", "node_role"]
+      }
+    },
+    {
+      "name": "aws_scale_nodegroup",
+      "description": "Scale an EKS node group",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "AWS region"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "EKS cluster name"
+          },
+          "nodegroup_name": {
+            "type": "string",
+            "description": "Node group name"
+          },
+          "desired_size": {
+            "type": "integer",
+            "description": "Desired number of nodes"
+          },
+          "min_size": {
+            "type": "integer",
+            "description": "Minimum number of nodes"
+          },
+          "max_size": {
+            "type": "integer",
+            "description": "Maximum number of nodes"
+          }
+        },
+        "required": ["region", "cluster_name", "nodegroup_name"]
+      }
+    },
+    {
+      "name": "aws_upgrade_cluster",
+      "description": "Upgrade an EKS cluster to a new Kubernetes version",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "AWS region"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "EKS cluster name"
+          },
+          "kubernetes_version": {
+            "type": "string",
+            "description": "Target Kubernetes version"
+          }
+        },
+        "required": ["region", "cluster_name", "kubernetes_version"]
+      }
+    },
+    {
+      "name": "aws_get_cluster_info",
+      "description": "Get detailed information about an EKS or ROSA cluster",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "AWS region"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "cluster_type": {
+            "type": "string",
+            "enum": ["eks", "rosa"],
+            "description": "Type of cluster"
+          }
+        },
+        "required": ["region", "cluster_name", "cluster_type"]
+      }
+    },
+    {
+      "name": "aws_list_available_versions",
+      "description": "List available Kubernetes/OpenShift versions",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cluster_type": {
+            "type": "string",
+            "enum": ["eks", "rosa"],
+            "description": "Type of cluster"
+          }
+        },
+        "required": ["cluster_type"]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uri": "aws://clusters",
+      "name": "AWS Clusters",
+      "description": "List of all EKS and ROSA clusters",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "aws://cluster/{cluster_name}",
+      "name": "Cluster Details",
+      "description": "Detailed information about a specific cluster",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "aws://versions/{cluster_type}",
+      "name": "Available Versions",
+      "description": "Available Kubernetes/OpenShift versions",
+      "mimeType": "application/json"
+    }
+  ]
+}

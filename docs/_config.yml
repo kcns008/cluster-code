@@ -1,0 +1,183 @@
+# Cluster Code Documentation Site Configuration
+
+# Site settings
+title: Cluster Code
+tagline: AI-Powered Kubernetes & OpenShift Cluster Management
+description: >-
+  Comprehensive CLI tool for building, maintaining, and troubleshooting
+  Kubernetes and OpenShift clusters across multi-cloud environments with
+  AI-powered diagnostics and GitOps automation.
+
+baseurl: "/cluster-code"
+url: "https://your-org.github.io"
+
+# Author/Organization
+author:
+  name: Cluster Code Team
+  email: support@cluster-code.io
+  github: your-org/cluster-code
+
+# Repository
+repository: your-org/cluster-code
+github_branch: main
+
+# Theme
+theme: jekyll-theme-cayman
+# Or use remote theme: remote_theme: pmarsceill/just-the-docs
+
+# Markdown
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: true
+
+# Permalinks
+permalink: pretty
+
+# Collections
+collections:
+  guides:
+    output: true
+    permalink: /guides/:name/
+  api:
+    output: true
+    permalink: /api/:name/
+  tutorials:
+    output: true
+    permalink: /tutorials/:name/
+  plugins:
+    output: true
+    permalink: /plugins/:name/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "guides"
+    values:
+      layout: "guide"
+  - scope:
+      path: ""
+      type: "api"
+    values:
+      layout: "api"
+  - scope:
+      path: ""
+      type: "tutorials"
+    values:
+      layout: "tutorial"
+  - scope:
+      path: ""
+      type: "plugins"
+    values:
+      layout: "plugin"
+
+# Navigation
+navigation:
+  - title: Home
+    url: /
+  - title: Getting Started
+    url: /guides/getting-started
+  - title: User Guides
+    url: /guides/
+    children:
+      - title: Installation
+        url: /guides/installation
+      - title: Configuration
+        url: /guides/configuration
+      - title: Cluster Connection
+        url: /guides/cluster-connection
+      - title: Diagnostics
+        url: /guides/diagnostics
+      - title: Cloud Providers
+        url: /guides/cloud-providers
+      - title: GitOps Workflows
+        url: /guides/gitops
+  - title: Tutorials
+    url: /tutorials/
+    children:
+      - title: Create Your First Cluster
+        url: /tutorials/first-cluster
+      - title: Deploy with Helm
+        url: /tutorials/helm-deployment
+      - title: Troubleshoot Pod Issues
+        url: /tutorials/pod-troubleshooting
+      - title: OpenShift Routes
+        url: /tutorials/openshift-routes
+  - title: Plugins
+    url: /plugins/
+    children:
+      - title: cluster-core
+        url: /plugins/cluster-core
+      - title: k8sgpt-analyzers
+        url: /plugins/k8sgpt-analyzers
+      - title: cloud-azure
+        url: /plugins/cloud-azure
+      - title: cloud-aws
+        url: /plugins/cloud-aws
+      - title: cloud-gcp
+        url: /plugins/cloud-gcp
+      - title: cluster-openshift
+        url: /plugins/cluster-openshift
+      - title: gitops
+        url: /plugins/gitops
+  - title: API Reference
+    url: /api/
+    children:
+      - title: Commands
+        url: /api/commands
+      - title: Agents
+        url: /api/agents
+      - title: MCP Servers
+        url: /api/mcp-servers
+      - title: Configuration
+        url: /api/configuration
+  - title: Community
+    url: /community
+  - title: GitHub
+    url: https://github.com/your-org/cluster-code
+    external: true
+
+# Features
+features:
+  search: true
+  toc: true
+  syntax_highlighting: true
+  feedback: true
+
+# Analytics (optional)
+google_analytics: UA-XXXXXXXXX-X
+
+# Social
+social:
+  github: your-org/cluster-code
+  twitter: cluster_code
+  discord: https://discord.gg/cluster-code
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .bundle
+  - .git
+  - .github
+  - README.md
+
+# Include
+include:
+  - _pages
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
+  - jekyll-readme-index
+  - jekyll-titles-from-headings
