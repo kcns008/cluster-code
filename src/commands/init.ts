@@ -92,10 +92,53 @@ export async function initCommand(options: InitOptions): Promise<void> {
     logger.success('Cluster configuration saved successfully!');
     logger.info(`Context: ${context}`);
     logger.info(`Namespace: ${namespace}`);
+
+    // Check for API key
+    const config = configManager.getConfig();
+    const apiKey = process.env.ANTHROPIC_API_KEY || config.anthropicApiKey;
+
+    if (!apiKey) {
+      logger.newline();
+      logger.warning('ANTHROPIC_API_KEY not configured');
+      logger.info('To use the interactive natural language interface, you need an Anthropic API key.');
+      logger.info('Get your API key from: https://console.anthropic.com/');
+
+      const { setupApiKey } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'setupApiKey',
+          message: 'Would you like to configure your API key now?',
+          default: true,
+        },
+      ]);
+
+      if (setupApiKey) {
+        const { apiKeyInput } = await inquirer.prompt([
+          {
+            type: 'password',
+            name: 'apiKeyInput',
+            message: 'Enter your Anthropic API key:',
+            mask: '*',
+          },
+        ]);
+
+        if (apiKeyInput) {
+          configManager.set('anthropicApiKey', apiKeyInput);
+          logger.success('API key saved successfully!');
+        }
+      } else {
+        logger.info('You can configure it later:');
+        logger.info('  export ANTHROPIC_API_KEY=your-key-here');
+        logger.info('Or:');
+        logger.info('  cluster-code config set anthropicApiKey your-key-here');
+      }
+    }
+
     logger.newline();
     logger.info('You can now use cluster-code commands:');
+    logger.info('  cluster-code           - Start interactive mode (natural language)');
     logger.info('  cluster-code diagnose  - Run cluster diagnostics');
-    logger.info('  cluster-code chat      - Start interactive troubleshooting');
+    logger.info('  cluster-code chat      - Start legacy chat mode');
     logger.info('  cluster-code --help    - Show all available commands');
   } catch (error: any) {
     logger.error(`Initialization failed: ${error.message}`);
