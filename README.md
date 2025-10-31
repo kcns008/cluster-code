@@ -12,9 +12,17 @@ Cluster Code is a comprehensive CLI tool for building, maintaining, and troubles
 1. Install Cluster Code:
 
 ```sh
-npm install -g @cluster-code/cli
-git clone https://github.com/your-org/cluster-code.git
+npm install -g @cluster-code/cluster-code
+```
+
+Or install locally for development:
+
+```sh
+git clone https://github.com/kcns008/cluster-code.git
 cd cluster-code
+npm install
+npm run build
+npm link
 ```
 
 2. Initialize cluster connection:
