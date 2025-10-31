@@ -1,0 +1,399 @@
+{
+  "name": "azure-operations",
+  "version": "1.0.0",
+  "description": "MCP server for Azure AKS and ARO operations",
+  "protocol_version": "2024-11-05",
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": false
+  },
+  "tools": [
+    {
+      "name": "azure_list_clusters",
+      "description": "List all AKS and ARO clusters in the subscription",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Azure subscription ID"
+          },
+          "resource_group": {
+            "type": "string",
+            "description": "Resource group name (optional, lists all if not specified)"
+          },
+          "cluster_type": {
+            "type": "string",
+            "enum": ["aks", "aro", "all"],
+            "default": "all",
+            "description": "Type of clusters to list"
+          }
+        },
+        "required": ["subscription_id"]
+      }
+    },
+    {
+      "name": "azure_get_cluster_credentials",
+      "description": "Get kubeconfig credentials for an AKS or ARO cluster",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Azure subscription ID"
+          },
+          "resource_group": {
+            "type": "string",
+            "description": "Resource group name"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "cluster_type": {
+            "type": "string",
+            "enum": ["aks", "aro"],
+            "description": "Type of cluster"
+          },
+          "admin": {
+            "type": "boolean",
+            "default": false,
+            "description": "Get admin credentials (AKS only)"
+          }
+        },
+        "required": ["subscription_id", "resource_group", "cluster_name", "cluster_type"]
+      }
+    },
+    {
+      "name": "azure_create_aks_cluster",
+      "description": "Create a new AKS cluster",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Azure subscription ID"
+          },
+          "resource_group": {
+            "type": "string",
+            "description": "Resource group name"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "region": {
+            "type": "string",
+            "description": "Azure region"
+          },
+          "kubernetes_version": {
+            "type": "string",
+            "description": "Kubernetes version (e.g., 1.28.9)"
+          },
+          "node_count": {
+            "type": "integer",
+            "default": 3,
+            "description": "Number of nodes in default pool"
+          },
+          "node_vm_size": {
+            "type": "string",
+            "default": "Standard_DS2_v2",
+            "description": "VM size for nodes"
+          },
+          "network_plugin": {
+            "type": "string",
+            "enum": ["azure", "kubenet"],
+            "default": "azure",
+            "description": "Network plugin"
+          },
+          "enable_managed_identity": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable managed identity"
+          },
+          "enable_rbac": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable Kubernetes RBAC"
+          },
+          "tags": {
+            "type": "object",
+            "description": "Resource tags",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["subscription_id", "resource_group", "cluster_name", "region"]
+      }
+    },
+    {
+      "name": "azure_create_aro_cluster",
+      "description": "Create a new Azure Red Hat OpenShift (ARO) cluster",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Azure subscription ID"
+          },
+          "resource_group": {
+            "type": "string",
+            "description": "Resource group name"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "region": {
+            "type": "string",
+            "description": "Azure region"
+          },
+          "openshift_version": {
+            "type": "string",
+            "description": "OpenShift version (e.g., 4.15.0)"
+          },
+          "master_vm_size": {
+            "type": "string",
+            "default": "Standard_D8s_v3",
+            "description": "VM size for master nodes"
+          },
+          "worker_vm_size": {
+            "type": "string",
+            "default": "Standard_D4s_v3",
+            "description": "VM size for worker nodes"
+          },
+          "worker_count": {
+            "type": "integer",
+            "default": 3,
+            "description": "Number of worker nodes"
+          },
+          "pod_cidr": {
+            "type": "string",
+            "default": "10.128.0.0/14",
+            "description": "Pod CIDR range"
+          },
+          "service_cidr": {
+            "type": "string",
+            "default": "172.30.0.0/16",
+            "description": "Service CIDR range"
+          },
+          "pull_secret": {
+            "type": "string",
+            "description": "Red Hat pull secret (base64 encoded)"
+          },
+          "domain": {
+            "type": "string",
+            "description": "Custom domain for cluster"
+          },
+          "vnet_name": {
+            "type": "string",
+            "description": "Virtual network name (created if not exists)"
+          },
+          "tags": {
+            "type": "object",
+            "description": "Resource tags",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["subscription_id", "resource_group", "cluster_name", "region", "pull_secret"]
+      }
+    },
+    {
+      "name": "azure_delete_cluster",
+      "description": "Delete an AKS or ARO cluster",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Azure subscription ID"
+          },
+          "resource_group": {
+            "type": "string",
+            "description": "Resource group name"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "cluster_type": {
+            "type": "string",
+            "enum": ["aks", "aro"],
+            "description": "Type of cluster"
+          },
+          "yes": {
+            "type": "boolean",
+            "default": false,
+            "description": "Skip confirmation prompt"
+          }
+        },
+        "required": ["subscription_id", "resource_group", "cluster_name", "cluster_type"]
+      }
+    },
+    {
+      "name": "azure_scale_cluster",
+      "description": "Scale an AKS cluster node pool",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Azure subscription ID"
+          },
+          "resource_group": {
+            "type": "string",
+            "description": "Resource group name"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "nodepool_name": {
+            "type": "string",
+            "default": "nodepool1",
+            "description": "Node pool name"
+          },
+          "node_count": {
+            "type": "integer",
+            "description": "Target node count"
+          }
+        },
+        "required": ["subscription_id", "resource_group", "cluster_name", "node_count"]
+      }
+    },
+    {
+      "name": "azure_upgrade_cluster",
+      "description": "Upgrade an AKS cluster to a new Kubernetes version",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Azure subscription ID"
+          },
+          "resource_group": {
+            "type": "string",
+            "description": "Resource group name"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "kubernetes_version": {
+            "type": "string",
+            "description": "Target Kubernetes version"
+          },
+          "control_plane_only": {
+            "type": "boolean",
+            "default": false,
+            "description": "Upgrade control plane only (not node pools)"
+          }
+        },
+        "required": ["subscription_id", "resource_group", "cluster_name", "kubernetes_version"]
+      }
+    },
+    {
+      "name": "azure_get_cluster_info",
+      "description": "Get detailed information about an AKS or ARO cluster",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Azure subscription ID"
+          },
+          "resource_group": {
+            "type": "string",
+            "description": "Resource group name"
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "Cluster name"
+          },
+          "cluster_type": {
+            "type": "string",
+            "enum": ["aks", "aro"],
+            "description": "Type of cluster"
+          }
+        },
+        "required": ["subscription_id", "resource_group", "cluster_name", "cluster_type"]
+      }
+    },
+    {
+      "name": "azure_list_available_versions",
+      "description": "List available Kubernetes/OpenShift versions in a region",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Azure subscription ID"
+          },
+          "region": {
+            "type": "string",
+            "description": "Azure region"
+          },
+          "cluster_type": {
+            "type": "string",
+            "enum": ["aks", "aro"],
+            "description": "Type of cluster"
+          }
+        },
+        "required": ["subscription_id", "region", "cluster_type"]
+      }
+    },
+    {
+      "name": "azure_create_resource_group",
+      "description": "Create an Azure resource group",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Azure subscription ID"
+          },
+          "resource_group": {
+            "type": "string",
+            "description": "Resource group name"
+          },
+          "region": {
+            "type": "string",
+            "description": "Azure region"
+          },
+          "tags": {
+            "type": "object",
+            "description": "Resource tags",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["subscription_id", "resource_group", "region"]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uri": "azure://clusters",
+      "name": "Azure Clusters",
+      "description": "List of all AKS and ARO clusters",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "azure://cluster/{cluster_name}",
+      "name": "Cluster Details",
+      "description": "Detailed information about a specific cluster",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "azure://versions/{region}/{cluster_type}",
+      "name": "Available Versions",
+      "description": "Available Kubernetes/OpenShift versions",
+      "mimeType": "application/json"
+    }
+  ]
+}

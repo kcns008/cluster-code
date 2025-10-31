@@ -1,0 +1,224 @@
+# Azure AKS Production Cluster Template
+# This template creates a production-ready AKS cluster with best practices
+
+apiVersion: cluster-code.io/v1alpha1
+kind: ClusterTemplate
+metadata:
+  name: aks-production
+  description: Production-ready AKS cluster with HA and security
+spec:
+  provider: azure
+  clusterType: aks
+
+  # Azure Configuration
+  azure:
+    subscriptionId: "${AZURE_SUBSCRIPTION_ID}"
+    resourceGroup: "production-aks-rg"
+    location: "eastus"
+    tags:
+      Environment: production
+      ManagedBy: cluster-code
+      CostCenter: engineering
+
+  # Cluster Configuration
+  cluster:
+    name: "prod-aks-cluster"
+    kubernetesVersion: "1.28.9"
+    dnsPrefix: "prod-aks"
+
+    # Network Configuration
+    network:
+      plugin: azure  # Azure CNI for production
+      policy: azure  # Azure Network Policy
+      serviceCidr: "10.0.0.0/16"
+      dnsServiceIP: "10.0.0.10"
+      dockerBridgeCidr: "172.17.0.1/16"
+      loadBalancerSku: standard
+
+    # Identity and RBAC
+    identity:
+      type: SystemAssigned  # Use managed identity
+      enableRBAC: true
+      enableAzureAD: true
+      azureADTenantId: "${AZURE_AD_TENANT_ID}"
+
+    # Node Pools
+    nodePools:
+      # System node pool (for cluster critical workloads)
+      - name: system
+        mode: System
+        vmSize: "Standard_D4s_v3"
+        osDiskSizeGB: 100
+        count: 3
+        minCount: 3
+        maxCount: 5
+        enableAutoScaling: true
+        availabilityZones: [1, 2, 3]
+        nodeLabels:
+          node-type: system
+        nodeTaints: []
+
+      # User node pool (for application workloads)
+      - name: apps
+        mode: User
+        vmSize: "Standard_D8s_v3"
+        osDiskSizeGB: 128
+        count: 5
+        minCount: 3
+        maxCount: 10
+        enableAutoScaling: true
+        availabilityZones: [1, 2, 3]
+        nodeLabels:
+          node-type: application
+          workload: general
+
+    # Add-ons
+    addons:
+      # Monitoring
+      monitoring:
+        enabled: true
+        logAnalyticsWorkspaceId: "${LOG_ANALYTICS_WORKSPACE_ID}"
+
+      # Azure Policy
+      azurePolicy:
+        enabled: true
+
+      # Azure Defender (Security)
+      azureDefender:
+        enabled: true
+
+      # Application Gateway Ingress Controller
+      ingressApplicationGateway:
+        enabled: true
+        gatewayName: "prod-aks-agw"
+        subnetCIDR: "10.225.0.0/16"
+
+      # Secret Store CSI Driver
+      azureKeyvaultSecretsProvider:
+        enabled: true
+        enableSecretRotation: true
+
+    # API Server Access
+    apiServer:
+      enablePrivateCluster: false  # Set to true for private clusters
+      authorizedIPRanges:
+        - "${YOUR_OFFICE_IP}/32"
+        - "${VPN_GATEWAY_IP}/32"
+
+    # Backup and Disaster Recovery
+    backup:
+      enabled: true
+      retentionDays: 30
+
+    # Auto-upgrade
+    autoUpgrade:
+      channel: stable  # none, patch, stable, rapid
+
+    # Maintenance Window
+    maintenanceWindow:
+      dayOfWeek: Sunday
+      startTime: "02:00"
+      durationHours: 4
+
+  # Post-Installation Configuration
+  postInstall:
+    # Install cert-manager
+    - name: cert-manager
+      type: helm
+      chart: jetstack/cert-manager
+      namespace: cert-manager
+      createNamespace: true
+      values:
+        installCRDs: true
+
+    # Install nginx-ingress
+    - name: nginx-ingress
+      type: helm
+      chart: ingress-nginx/ingress-nginx
+      namespace: ingress-nginx
+      createNamespace: true
+
+    # Install Prometheus monitoring
+    - name: kube-prometheus-stack
+      type: helm
+      chart: prometheus-community/kube-prometheus-stack
+      namespace: monitoring
+      createNamespace: true
+
+    # Configure cluster autoscaler
+    - name: cluster-autoscaler
+      type: helm
+      chart: autoscaler/cluster-autoscaler
+      namespace: kube-system
+      values:
+        autoDiscovery:
+          clusterName: "prod-aks-cluster"
+        azureClientID: "${AZURE_CLIENT_ID}"
+        azureClientSecret: "${AZURE_CLIENT_SECRET}"
+        azureTenantID: "${AZURE_TENANT_ID}"
+        azureSubscriptionID: "${AZURE_SUBSCRIPTION_ID}"
+
+  # Security Policies
+  security:
+    # Pod Security Standards
+    podSecurityStandards:
+      enforce: restricted
+      audit: restricted
+      warn: restricted
+
+    # Network Policies
+    defaultNetworkPolicies:
+      denyAllIngress: true
+      denyAllEgress: false
+
+    # RBAC
+    rbac:
+      minimumPrivilege: true
+
+    # Image Security
+    imagePolicies:
+      allowedRegistries:
+        - "mcr.microsoft.com"
+        - "docker.io/library"
+        - "${YOUR_ACR}.azurecr.io"
+      requireSignedImages: false
+
+  # Cost Optimization
+  costOptimization:
+    # Spot instances for non-critical workloads
+    spotNodePools:
+      - name: spot
+        vmSize: "Standard_D4s_v3"
+        count: 0
+        minCount: 0
+        maxCount: 10
+        enableAutoScaling: true
+        scaleDownMode: Delete
+        spotMaxPrice: -1  # Pay up to regular price
+        evictionPolicy: Delete
+        nodeLabels:
+          kubernetes.azure.com/scalesetpriority: spot
+        nodeTaints:
+          - key: kubernetes.azure.com/scalesetpriority
+            value: spot
+            effect: NoSchedule
+
+    # Auto-shutdown for non-production hours (optional)
+    autoShutdown:
+      enabled: false
+      schedule: "0 18 * * 1-5"  # 6 PM on weekdays
+
+# Usage:
+# 1. Set environment variables:
+#    export AZURE_SUBSCRIPTION_ID="your-subscription-id"
+#    export AZURE_AD_TENANT_ID="your-tenant-id"
+#    export LOG_ANALYTICS_WORKSPACE_ID="/subscriptions/.../workspaces/..."
+#    export YOUR_OFFICE_IP="203.0.113.1"
+#    export VPN_GATEWAY_IP="203.0.113.2"
+#    export YOUR_ACR="mycompanyacr"
+#
+# 2. Apply template:
+#    cluster-code apply-template --template examples/cluster-templates/aks/production-cluster.yaml
+#
+# 3. Or use individual commands:
+#    cluster-code azure-cluster-create --config examples/cluster-templates/aks/production-cluster.yaml

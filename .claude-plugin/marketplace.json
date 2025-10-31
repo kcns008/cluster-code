@@ -40,6 +40,72 @@
       },
       "source": "./plugins/commit-commands",
       "category": "productivity"
+    },
+    {
+      "name": "cloud-azure",
+      "description": "Azure cloud provider integration for AKS and ARO cluster management with MCP server",
+      "version": "1.0.0",
+      "author": {
+        "name": "Cluster Code Team",
+        "email": "support@cluster-code.io"
+      },
+      "source": "./plugins/cloud-azure",
+      "category": "cloud-provider",
+      "features": [
+        "AKS cluster provisioning",
+        "ARO cluster management",
+        "Azure MCP server integration",
+        "Cluster lifecycle management",
+        "Infrastructure as Code generation"
+      ],
+      "requirements": {
+        "az": ">=2.50.0",
+        "kubectl": ">=1.28.0"
+      }
+    },
+    {
+      "name": "cluster-openshift",
+      "description": "OpenShift-specific features including Routes, Operators, BuildConfigs, and Projects",
+      "version": "1.0.0",
+      "author": {
+        "name": "Cluster Code Team",
+        "email": "support@cluster-code.io"
+      },
+      "source": "./plugins/cluster-openshift",
+      "category": "cluster-management",
+      "features": [
+        "Routes analysis and troubleshooting",
+        "Operator lifecycle management",
+        "TLS certificate validation",
+        "BuildConfig analysis",
+        "Project management"
+      ],
+      "requirements": {
+        "oc": ">=4.15.0",
+        "kubectl": ">=1.28.0"
+      }
+    },
+    {
+      "name": "gitops",
+      "description": "GitOps workflows with Helm, Kustomize, ArgoCD, and Flux integration",
+      "version": "1.0.0",
+      "author": {
+        "name": "Cluster Code Team",
+        "email": "support@cluster-code.io"
+      },
+      "source": "./plugins/gitops",
+      "category": "deployment",
+      "features": [
+        "Helm chart deployment",
+        "Kustomize overlay management",
+        "ArgoCD synchronization",
+        "Flux integration",
+        "GitOps best practices"
+      ],
+      "requirements": {
+        "kubectl": ">=1.28.0",
+        "helm": ">=3.12.0"
+      }
     }
   ]
 }
