@@ -9,7 +9,7 @@ Cluster Code is a comprehensive CLI tool for building, maintaining, and troubles
 
 ## Get started
 
-1. Install Cluster Code:
+### 1. Install Cluster Code:
 
 ```sh
 npm install -g @cluster-code/cluster-code
@@ -25,25 +25,48 @@ npm run build
 npm link
 ```
 
-2. Initialize cluster connection:
+### 2. Set up your Anthropic API key:
 
 ```sh
-cluster-code init --context my-cluster --namespace production
+export ANTHROPIC_API_KEY=your-api-key-here
 ```
 
-3. Run cluster diagnostics:
+Get your API key from [Anthropic Console](https://console.anthropic.com/)
+
+### 3. Initialize cluster connection:
 
 ```sh
-cluster-code diagnose
+cluster-code init
 ```
 
-4. Start interactive troubleshooting:
+This will prompt you to:
+- Select your Kubernetes context
+- Choose a default namespace
+- Configure your API key (if not set via environment variable)
+
+### 4. Start using Cluster Code:
+
+Simply run `cluster-code` to start the interactive natural language interface:
 
 ```sh
-cluster-code chat
+cluster-code
 ```
+
+Now you can interact with your cluster using plain English! For example:
+- "Show me all pods in the current namespace"
+- "Why is my deployment failing?"
+- "Scale my app to 5 replicas"
+- "Check node resource usage"
 
 ## Core Features
+
+### 💬 Natural Language Interface (NEW!)
+- **Interact with your cluster using plain English** - no need to memorize kubectl commands
+- AI-powered command generation from natural language requests
+- Context-aware suggestions based on your cluster state
+- Automatic command execution with safety confirmations
+- Conversational troubleshooting with memory of previous interactions
+- Support for kubectl, oc (OpenShift), AWS CLI, Azure CLI, and Google Cloud SDK
 
 ### 🚀 Cluster Management
 - Connect to Kubernetes and OpenShift clusters
@@ -84,64 +107,22 @@ See the [plugins directory](./plugins/README.md) for detailed documentation on a
 
 ## Quick Examples
 
-### Diagnose Cluster Issues
+### Natural Language Interface (Primary Mode)
+
+Just run `cluster-code` and interact in plain English:
+
 ```bash
-# Run comprehensive cluster diagnostics
-cluster-code diagnose
+$ cluster-code
 
-# Troubleshoot specific pod
-cluster-code troubleshoot pod my-app-pod-xyz
+╔═══════════════════════════════════════════════════════╗
+║            Cluster Code - Interactive Mode            ║
+╚═══════════════════════════════════════════════════════╝
 
-# Analyze service connectivity
-cluster-code analyze service my-service
+Connected to kubernetes cluster
+Context: my-cluster
+Namespace: production
 
-# Check node health and resource pressure
-cluster-code check nodes
-```
-
-### Interactive Troubleshooting
-```bash
-# Start chat-based troubleshooting
-cluster-code chat
-
-# Get help with specific issues
-cluster-code chat "Why are my pods crashing?"
-cluster-code chat "Help me debug service connectivity"
-
-# Use local LLM for privacy
-cluster-code --model local-cluster-model chat "Analyze security issues in my cluster"
-```
-
-### Resource Management
-```bash
-# Scale deployment
-cluster-code scale deployment my-app --replicas 5
-
-# View pod logs
-cluster-code logs pod my-app-pod-xyz --follow
-
-# Describe any resource
-cluster-code describe deployment my-app
-cluster-code describe service my-service
-cluster-code describe pvc my-data-volume
-```
-
-## Documentation
-
-- **[Getting Started Guide](docs/getting-started.md)** - Installation and first cluster connection
-- **[Local LLM Support](docs/local-llm-support.md)** - Configure self-hosted models for privacy and control
-- **[Troubleshooting Playbook](docs/troubleshooting-playbook.md)** - Common issues and solutions
-- **[Cluster Connection Guide](docs/cluster-connection.md)** - Multi-cluster configuration
-- **[API Reference](docs/api-reference.md)** - Commands and agents documentation
-- **[Plugin Development](docs/plugin-development.md)** - Creating custom analyzers
-
-## Reporting Bugs
-
-We welcome your feedback. Use the `/bug` command to report issues directly within Cluster Code, or file a [GitHub issue](https://github.com/your-org/cluster-code/issues).
-
-## Community
-
-Join the [Cluster Code Discord](https://discord.gg/cluster-code) to connect with other developers and SREs using Cluster Code. Get help, share troubleshooting tips, and discuss cluster management best practices.
+You: Show me all pods in my namespace
 
 ## Data collection, usage, and retention
 
