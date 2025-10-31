@@ -1,0 +1,73 @@
+{
+  "name": "cloud-aws",
+  "version": "1.0.0",
+  "description": "AWS cloud provider integration for EKS and ROSA cluster management",
+  "author": "Cluster Code Team",
+  "license": "MIT",
+  "category": "cloud-provider",
+  "keywords": ["aws", "eks", "rosa", "openshift", "cloud"],
+  "commands": [
+    "aws-cluster-create",
+    "aws-cluster-list",
+    "aws-cluster-connect",
+    "aws-cluster-delete",
+    "aws-cluster-scale",
+    "eks-upgrade",
+    "rosa-install"
+  ],
+  "agents": [
+    "aws-provisioner",
+    "rosa-specialist"
+  ],
+  "mcp_servers": [
+    "aws-operations"
+  ],
+  "dependencies": {
+    "aws": ">=2.13.0",
+    "kubectl": ">=1.28.0",
+    "cluster-code": ">=1.0.0"
+  },
+  "optional_dependencies": {
+    "rosa": ">=1.2.0",
+    "terraform": ">=1.5.0",
+    "helm": ">=3.12.0"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(aws:*)",
+      "Bash(rosa:*)",
+      "Bash(kubectl:*)",
+      "Bash(oc:*)",
+      "Bash(helm:*)",
+      "Bash(terraform:*)",
+      "Read(.*\\.yaml)",
+      "Read(.*\\.yml)",
+      "Read(.*\\.json)",
+      "Read(.*\\.tf)",
+      "Write(.*\\.yaml)",
+      "Write(.*\\.yml)",
+      "Write(.*\\.json)",
+      "Write(.*\\.tf)"
+    ]
+  },
+  "configuration": {
+    "region": {
+      "type": "string",
+      "description": "Default AWS region",
+      "default": "us-east-1"
+    },
+    "profile": {
+      "type": "string",
+      "description": "AWS CLI profile",
+      "required": false
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/cluster-code.git"
+  },
+  "homepage": "https://docs.cluster-code.io/plugins/cloud-aws",
+  "bugs": {
+    "url": "https://github.com/your-org/cluster-code/issues"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "cloud-gcp",
+  "version": "1.0.0",
+  "description": "GCP cloud provider integration for GKE cluster management",
+  "author": "Cluster Code Team",
+  "license": "MIT",
+  "category": "cloud-provider",
+  "keywords": ["gcp", "gke", "google-cloud", "kubernetes"],
+  "commands": [
+    "gcp-cluster-create",
+    "gcp-cluster-list",
+    "gcp-cluster-connect",
+    "gcp-cluster-delete",
+    "gcp-cluster-scale",
+    "gke-upgrade"
+  ],
+  "agents": [
+    "gcp-provisioner"
+  ],
+  "mcp_servers": [
+    "gcp-operations"
+  ],
+  "dependencies": {
+    "gcloud": ">=400.0.0",
+    "kubectl": ">=1.28.0",
+    "cluster-code": ">=1.0.0"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(gcloud:*)",
+      "Bash(kubectl:*)",
+      "Read(.*\\.yaml)",
+      "Write(.*\\.yaml)"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/cluster-code.git"
+  }
+}
