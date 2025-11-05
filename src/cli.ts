@@ -16,6 +16,11 @@ import {
   configSetCommand,
   configPathCommand,
   configResetCommand,
+  providerListCommand,
+  providerAddCommand,
+  providerRemoveCommand,
+  providerSetCommand,
+  providerShowCommand,
 } from './commands';
 import { logger } from './utils/logger';
 import { ConfigManager } from './config';
@@ -142,6 +147,73 @@ configCmd
     }
   });
 
+// Provider commands
+const providerCmd = configCmd
+  .command('provider')
+  .description('Manage LLM providers');
+
+providerCmd
+  .command('list')
+  .alias('ls')
+  .description('List all configured providers')
+  .action(async () => {
+    try {
+      await providerListCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+providerCmd
+  .command('add [name]')
+  .description('Add a new provider')
+  .action(async (name) => {
+    try {
+      await providerAddCommand(name);
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+providerCmd
+  .command('remove [name]')
+  .alias('rm')
+  .description('Remove a provider')
+  .action(async (name) => {
+    try {
+      await providerRemoveCommand(name);
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+providerCmd
+  .command('set [name]')
+  .description('Set the active provider')
+  .action(async (name) => {
+    try {
+      await providerSetCommand(name);
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+providerCmd
+  .command('show')
+  .description('Show current active provider')
+  .action(async () => {
+    try {
+      await providerShowCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
 // Version command (enhanced)
 program
   .command('version')
@@ -162,15 +234,17 @@ async function startInteractiveMode(options: { autoExecute?: boolean; verbose?: 
   const configManager = new ConfigManager();
   const config = configManager.getConfig();
 
-  // Check if API key is configured
-  const apiKey = process.env.ANTHROPIC_API_KEY || config.anthropicApiKey;
-
-  if (!apiKey) {
-    logger.error('ANTHROPIC_API_KEY environment variable or config setting is required');
-    logger.info('Set it in your environment:');
-    logger.info('  export ANTHROPIC_API_KEY=your-key-here');
-    logger.info('Or configure it:');
-    logger.info('  cluster-code config set anthropicApiKey your-key-here');
+  // Check if LLM is configured
+  if (!configManager.isLLMConfigured()) {
+    logger.error('LLM provider not configured');
+    logger.info('\nAvailable options:');
+    logger.info('  1. Set Anthropic API key:');
+    logger.info('     export ANTHROPIC_API_KEY=your-key-here');
+    logger.info('  2. Set OpenAI API key:');
+    logger.info('     export OPENAI_API_KEY=your-key-here');
+    logger.info('  3. Configure a custom provider:');
+    logger.info('     cluster-code config provider add <name>');
+    logger.info('\nFor more information, see: https://github.com/kcns008/cluster-code#providers');
     process.exit(1);
   }
 
@@ -182,7 +256,7 @@ async function startInteractiveMode(options: { autoExecute?: boolean; verbose?: 
   }
 
   // Start interactive session
-  const session = new InteractiveSession(apiKey, {
+  const session = new InteractiveSession({
     autoExecute: options.autoExecute || false,
     verbose: options.verbose || false
   });
@@ -195,10 +269,10 @@ async function startInteractiveMode(options: { autoExecute?: boolean; verbose?: 
 async function handleDefaultBehavior() {
   const configManager = new ConfigManager();
   const config = configManager.getConfig();
-  const apiKey = process.env.ANTHROPIC_API_KEY || config.anthropicApiKey;
+  const isLLMConfigured = configManager.isLLMConfigured();
 
   // Check if configured
-  const isConfigured = config.cluster && config.cluster.context && apiKey;
+  const isConfigured = config.cluster && config.cluster.context && isLLMConfigured;
 
   if (isConfigured) {
     // Launch interactive mode directly
@@ -216,12 +290,15 @@ async function handleDefaultBehavior() {
       console.log(chalk.gray('  1. Initialize cluster: ') + chalk.cyan('cluster-code init'));
       console.log(chalk.gray('  2. Set API key:        ') + chalk.cyan('export ANTHROPIC_API_KEY=your-key-here'));
       console.log(chalk.gray('  3. Start interactive:  ') + chalk.cyan('cluster-code\n'));
-    } else if (!apiKey) {
-      console.log(chalk.yellow('⚠ ANTHROPIC_API_KEY not set\n'));
-      console.log(chalk.bold('Setup API Key:'));
-      console.log(chalk.gray('  export ANTHROPIC_API_KEY=your-key-here\n'));
-      console.log(chalk.gray('Or configure it:'));
-      console.log(chalk.cyan('  cluster-code config set anthropicApiKey your-key-here\n'));
+    } else if (!isLLMConfigured) {
+      console.log(chalk.yellow('⚠ LLM provider not configured\n'));
+      console.log(chalk.bold('Setup LLM Provider:'));
+      console.log(chalk.gray('  Option 1 - Anthropic (Claude):'));
+      console.log(chalk.cyan('    export ANTHROPIC_API_KEY=your-key-here\n'));
+      console.log(chalk.gray('  Option 2 - OpenAI (GPT):'));
+      console.log(chalk.cyan('    export OPENAI_API_KEY=your-key-here\n'));
+      console.log(chalk.gray('  Option 3 - Custom provider:'));
+      console.log(chalk.cyan('    cluster-code config provider add <name>\n'));
     }
 
     console.log(chalk.bold('Quick Start:'));

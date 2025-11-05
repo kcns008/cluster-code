@@ -1,10 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk';
 import inquirer from 'inquirer';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { Logger } from '../utils/logger';
 import { buildCLIContext, generateSystemPrompt, formatCLIContext, CLIContext } from '../utils/cli-context';
 import { ConfigManager } from '../config';
+import { ProviderManager, LLMClient } from '../llm';
 
 const execAsync = promisify(exec);
 
@@ -23,7 +23,7 @@ interface Message {
  * Handles the conversational interface for cluster-code
  */
 export class InteractiveSession {
-  private anthropic: Anthropic;
+  private llmClient: LLMClient;
   private logger: Logger;
   private configManager: ConfigManager;
   private messages: Message[] = [];
@@ -32,11 +32,16 @@ export class InteractiveSession {
   private options: SessionOptions;
   private running: boolean = false;
 
-  constructor(apiKey: string, options: SessionOptions = {}) {
-    this.anthropic = new Anthropic({ apiKey });
+  constructor(options: SessionOptions = {}) {
     this.logger = new Logger();
     this.configManager = new ConfigManager();
     this.options = options;
+
+    // Initialize LLM client with provider manager
+    const llmConfig = this.configManager.getLLMConfig();
+    const providers = this.configManager.getProviders();
+    const providerManager = new ProviderManager(providers);
+    this.llmClient = new LLMClient(providerManager, llmConfig);
   }
 
   /**
@@ -102,6 +107,11 @@ export class InteractiveSession {
     this.logger.section('Cluster Code - Interactive Mode');
     this.logger.info('Ask me anything about your cluster in natural language!');
     this.logger.info('Type /help for available commands, /exit to quit\n');
+
+    // Show LLM provider info
+    const providerInfo = this.llmClient.getProviderInfo();
+    this.logger.info(`LLM Provider: ${providerInfo.provider}`);
+    this.logger.info(`Model: ${providerInfo.model}\n`);
 
     if (this.cliContext?.clusterInfo) {
       const { context, namespace, type } = this.cliContext.clusterInfo;
@@ -258,23 +268,13 @@ export class InteractiveSession {
     this.logger.startSpinner('Thinking...');
 
     try {
-      // Call Claude API
-      const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4096,
+      // Generate response using LLM client
+      const assistantMessage = await this.llmClient.generate({
         system: this.systemPrompt,
-        messages: this.messages.map(msg => ({
-          role: msg.role,
-          content: msg.content
-        }))
+        messages: this.messages,
       });
 
       this.logger.stopSpinner();
-
-      // Extract response
-      const assistantMessage = response.content[0].type === 'text'
-        ? response.content[0].text
-        : '';
 
       // Add assistant response to history
       this.messages.push({
@@ -291,9 +291,10 @@ export class InteractiveSession {
     } catch (error: any) {
       this.logger.failSpinner('Error processing request');
 
-      if (error.status === 401) {
-        this.logger.error('Invalid API key. Please check your ANTHROPIC_API_KEY.');
-      } else if (error.status === 429) {
+      if (error.message.includes('API key')) {
+        this.logger.error('Invalid or missing API key. Please check your configuration.');
+        this.logger.info('Use: cluster-code config provider add <name> to configure a provider');
+      } else if (error.message.includes('rate limit') || error.message.includes('429')) {
         this.logger.error('Rate limit exceeded. Please try again later.');
       } else {
         this.logger.error(`Error: ${error.message}`);

@@ -47,11 +47,52 @@ export interface PluginManifest {
   enabled: boolean;
 }
 
+/**
+ * LLM Provider configuration types
+ */
+export type ProviderType =
+  | 'anthropic'
+  | 'openai'
+  | 'google'
+  | 'ollama'
+  | 'openai-compatible'
+  | 'custom';
+
+export interface ModelConfig {
+  name: string;
+  displayName?: string;
+  maxTokens?: number;
+  contextWindow?: number;
+}
+
+export interface ProviderConfig {
+  type: ProviderType;
+  name: string;
+  apiKey?: string;
+  baseURL?: string;
+  models?: Record<string, ModelConfig>;
+  options?: Record<string, any>;
+}
+
+export interface LLMConfig {
+  provider: string; // provider identifier (e.g., 'anthropic', 'openai', 'custom-ollama')
+  model: string; // model identifier (e.g., 'claude-3-5-sonnet-20241022', 'gpt-4')
+  maxTokens?: number;
+  temperature?: number;
+}
+
 export interface ClusterCodeConfig {
   cluster?: ClusterConfig;
   agents?: AgentConfig[];
   plugins?: PluginManifest[];
+
+  // LLM Configuration
+  llm?: LLMConfig;
+  providers?: Record<string, ProviderConfig>;
+
+  // Legacy support (deprecated)
   anthropicApiKey?: string;
+
   defaultNamespace?: string;
   defaultContext?: string;
 }
