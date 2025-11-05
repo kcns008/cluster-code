@@ -1,6 +1,6 @@
 # Cluster Code
 
-![](https://img.shields.io/badge/Kubernetes-1.28%2B-blue?style=flat-square) ![](https://img.shields.io/badge/OpenShift-4.15%2B-red?style=flat-square) [![Cluster Code]](https://github.com/your-org/cluster-code)
+![](https://img.shields.io/badge/Kubernetes-1.28%2B-blue?style=flat-square) ![](https://img.shields.io/badge/OpenShift-4.15%2B-red?style=flat-square) [![Cluster Code]](https://github.com/kcns008/cluster-code)
 
 [Cluster Code]: https://img.shields.io/badge/Cluster%20Code-v1.0.0-brightgreen.svg?style=flat-square
 
@@ -12,7 +12,11 @@ Cluster Code is a comprehensive CLI tool for building, maintaining, and troubles
 ### 1. Install Cluster Code:
 
 ```sh
+# Scoped package
 npm install -g @cluster-code/cluster-code
+
+# Unscoped alias (installs the scoped package under the hood)
+npm install -g cluster-code
 ```
 
 Or install locally for development:
@@ -23,6 +27,12 @@ cd cluster-code
 npm install
 npm run build
 npm link
+```
+
+Or add the CLI directly to another Node.js project without cloning:
+
+```sh
+npm install cluster-code
 ```
 
 ### 2. Set up your LLM provider:

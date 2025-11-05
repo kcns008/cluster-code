@@ -13,7 +13,7 @@ AI-Powered Kubernetes & OpenShift Cluster Management across Multi-Cloud Environm
 {: .fs-6 .fw-300 }
 
 [Get Started](/guides/getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[View on GitHub](https://github.com/your-org/cluster-code){: .btn .fs-5 .mb-4 .mb-md-0 }
+[View on GitHub](https://github.com/kcns008/cluster-code){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 ---
 
@@ -180,11 +180,14 @@ cluster-code flux-reconcile \
 ### 1. Install Cluster Code
 
 ```bash
-# Using npm
-npm install -g @cluster-code/cli
+# Global install (scoped)
+npm install -g @cluster-code/cluster-code
+
+# Global install (unscoped alias)
+npm install -g cluster-code
 
 # Or clone repository
-git clone https://github.com/your-org/cluster-code.git
+git clone https://github.com/kcns008/cluster-code.git
 cd cluster-code
 npm install
 ```

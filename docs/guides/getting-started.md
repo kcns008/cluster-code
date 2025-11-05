@@ -44,8 +44,11 @@ Before installing Cluster Code, ensure you have:
 ### Method 1: Install via npm (Recommended)
 
 ```bash
-# Install globally
-npm install -g @cluster-code/cli
+# Install globally (scoped package)
+npm install -g @cluster-code/cluster-code
+
+# Or install the unscoped alias
+npm install -g cluster-code
 
 # Verify installation
 cluster-code --version
@@ -55,7 +58,7 @@ cluster-code --version
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/cluster-code.git
+git clone https://github.com/kcns008/cluster-code.git
 cd cluster-code
 
 # Install dependencies
@@ -71,11 +74,14 @@ cluster-code --version
 ### Method 3: Use via npx (No Installation)
 
 ```bash
-# Run without installing
-npx @cluster-code/cli <command>
+# Run without installing (scoped package)
+npx @cluster-code/cluster-code <command>
 
 # Example
-npx @cluster-code/cli diagnose
+npx @cluster-code/cluster-code diagnose
+
+# Or use the unscoped alias
+npx cluster-code diagnose
 ```
 
 ---
@@ -504,7 +510,9 @@ echo 'export PATH="$(npm config get prefix)/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
 # Or reinstall with sudo (not recommended)
-sudo npm install -g @cluster-code/cli
+sudo npm install -g @cluster-code/cluster-code
+# Or install the unscoped alias
+sudo npm install -g cluster-code
 ```
 
 ### Permission Errors
@@ -517,7 +525,9 @@ echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
 source ~/.bashrc
 
 # Reinstall
-npm install -g @cluster-code/cli
+npm install -g @cluster-code/cluster-code
+# Or install the unscoped alias
+npm install -g cluster-code
 ```
 
 ### Plugin Not Loading

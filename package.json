@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "cluster-code": "./bin/cluster-code.js"
+    "cluster-code": "bin/cluster-code.js"
   },
   "files": [
     "dist",
@@ -49,7 +49,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kcns008/cluster-code.git"
+    "url": "git+https://github.com/kcns008/cluster-code.git"
   },
   "bugs": {
     "url": "https://github.com/kcns008/cluster-code/issues"
