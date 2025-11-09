@@ -1,0 +1,73 @@
+{
+  "$schema": "https://docs.claude.com/schemas/skill-rules.schema.json",
+  "version": "1.0.0",
+  "description": "Auto-activation rules for cluster-code skills. Defines when skills should be suggested based on file paths and keywords.",
+  "skills": [
+    {
+      "name": "cluster-dev-guidelines",
+      "description": "TypeScript/Node.js development patterns and best practices for cluster-code",
+      "pathPatterns": [
+        "src/**/*.ts",
+        "src/**/*.js",
+        "plugins/**/index.ts",
+        "bin/**/*.js",
+        "*.ts",
+        "tsconfig.json",
+        "package.json"
+      ],
+      "keywords": [
+        "typescript",
+        "node",
+        "nodejs",
+        "development",
+        "implement",
+        "refactor",
+        "code",
+        "coding",
+        "plugin",
+        "cli",
+        "commander",
+        "kubectl",
+        "llm",
+        "provider",
+        "error handling",
+        "testing",
+        "jest",
+        "build",
+        "compile"
+      ],
+      "priority": 10
+    },
+    {
+      "name": "skill-developer",
+      "description": "Meta-skill for creating and managing Claude Code skills",
+      "pathPatterns": [
+        ".claude/skills/**/*.md",
+        ".claude/skill-rules.json"
+      ],
+      "keywords": [
+        "create skill",
+        "new skill",
+        "skill development",
+        "add skill",
+        "skill template",
+        "skill guidelines",
+        "skill structure"
+      ],
+      "priority": 20
+    }
+  ],
+  "globalSettings": {
+    "maxSuggestions": 3,
+    "suggestionThreshold": 0.5,
+    "enablePathMatching": true,
+    "enableKeywordMatching": true,
+    "caseSensitive": false
+  },
+  "notes": [
+    "Skills are suggested when either pathPatterns or keywords match.",
+    "Priority determines order of suggestions (higher = shown first).",
+    "Skill files must exist in .claude/skills/ directory.",
+    "To add more skills, create the skill file in .claude/skills/ and add an entry here."
+  ]
+}
