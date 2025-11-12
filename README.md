@@ -4,307 +4,109 @@
 
 [Cluster Code]: https://img.shields.io/badge/Cluster%20Code-v1.0.0-brightgreen.svg?style=flat-square
 
-Cluster Code is a comprehensive CLI tool for building, maintaining, and troubleshooting Kubernetes and OpenShift clusters across on-premises, AWS, Azure, and GCP environments. Built on Claude Code's agentic framework, it provides AI-powered cluster diagnostics, multi-cloud provisioning, and intelligent troubleshooting capabilities. Enhanced with [K8sGPT](https://k8sgpt.ai/) analyzers and powered by advanced AI diagnostics.
+AI-powered CLI tool for Kubernetes and OpenShift cluster management with intelligent diagnostics, multi-cloud support, and GitOps workflows.
 
+## ⚡ Quick Start
 
-## Get started
-
-### 1. Install Cluster Code:
+### Install
 
 ```sh
-# Scoped package
-npm install -g @cluster-code/cluster-code
-
-# Unscoped alias (installs the scoped package under the hood)
 npm install -g cluster-code
 ```
 
-Or install locally for development:
+### Configure LLM Provider
 
 ```sh
-git clone https://github.com/kcns008/cluster-code.git
-cd cluster-code
-npm install
-npm run build
-npm link
-```
+# Anthropic (Claude)
+export ANTHROPIC_API_KEY=your-api-key
 
-Or add the CLI directly to another Node.js project without cloning:
+# Or OpenAI
+export OPENAI_API_KEY=your-api-key
 
-```sh
-npm install cluster-code
-```
-
-### 2. Set up your LLM provider:
-
-Cluster Code supports multiple LLM providers including Anthropic, OpenAI, Google, and local models via Ollama.
-
-**Option 1: Anthropic (Claude)**
-```sh
-export ANTHROPIC_API_KEY=your-api-key-here
-```
-Get your API key from [Anthropic Console](https://console.anthropic.com/)
-
-**Option 2: OpenAI (GPT)**
-```sh
-export OPENAI_API_KEY=your-api-key-here
-```
-Get your API key from [OpenAI Platform](https://platform.openai.com/)
-
-**Option 3: Google (Gemini)**
-```sh
-export GOOGLE_GENERATIVE_AI_API_KEY=your-api-key-here
-```
-Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-
-**Option 4: Local Models (Ollama)**
-
-No API key needed! Just install and run [Ollama](https://ollama.ai/), then configure:
-```sh
+# Or use local models (no API key needed)
+ollama pull llama3
 cluster-code config provider add ollama
 ```
 
-### 3. Initialize cluster connection:
+### Connect & Go
 
 ```sh
 cluster-code init
-```
-
-This will prompt you to:
-- Select your Kubernetes context
-- Choose a default namespace
-
-### 4. Start using Cluster Code:
-
-Simply run `cluster-code` to start the interactive natural language interface:
-
-```sh
 cluster-code
 ```
 
-Now you can interact with your cluster using plain English! For example:
-- "Show me all pods in the current namespace"
-- "Why is my deployment failing?"
-- "Scale my app to 5 replicas"
-- "Check node resource usage"
+That's it! Start chatting with your cluster in plain English.
 
-## Core Features
+## ✨ Key Features
 
-### 💬 Natural Language Interface (NEW!)
-- **Interact with your cluster using plain English** - no need to memorize kubectl commands
-- AI-powered command generation from natural language requests
-- Context-aware suggestions based on your cluster state
-- Automatic command execution with safety confirmations
-- Conversational troubleshooting with memory of previous interactions
-- Support for kubectl, oc (OpenShift), AWS CLI, Azure CLI, and Google Cloud SDK
+- 💬 **Natural Language Interface** - Control your cluster using plain English
+- 🔍 **AI-Powered Diagnostics** - Intelligent troubleshooting with K8sGPT
+- ☁️ **Multi-Cloud Support** - AWS EKS, Azure AKS/ARO, GCP GKE
+- 🚀 **GitOps Ready** - Helm, Kustomize, ArgoCD, Flux integration
+- 🔒 **Local LLM Support** - Use Ollama for complete data privacy
+- 🎯 **OpenShift Native** - Routes, Operators, BuildConfigs support
 
-### 🚀 Cluster Management
-- Connect to Kubernetes and OpenShift clusters
-- Multi-cloud cluster provisioning (AWS EKS, Azure AKS/ARO, GCP GKE)
-- Cluster health monitoring and status reporting
-- Resource scaling and node management
+## 📚 Documentation
 
-### 🔍 AI-Powered Diagnostics
-- Integrated K8sGPT analyzers for intelligent troubleshooting
-- Parallel analysis agents for comprehensive cluster health
-- Real-time log analysis and event correlation
-- Interactive problem-solving with advanced AI diagnostics
-- **Multi-Provider LLM Support**: Choose from Anthropic, OpenAI, Google, or local models
-- **Local LLM Support**: Use self-hosted models (Ollama, LM Studio) for privacy and cost control
+**[View Full Documentation →](https://kcns008.github.io/cluster-code)**
 
-### 🛠️ Operations & Maintenance
-- Automated cluster upgrades and patching
-- Backup and restore workflows
-- Certificate management and rotation
-- Security vulnerability scanning
+- [Installation Guide](https://kcns008.github.io/cluster-code/guides/installation) - Detailed setup instructions
+- [LLM Provider Setup](https://kcns008.github.io/cluster-code/guides/llm-providers) - Configure Anthropic, OpenAI, Google, or local models
+- [Getting Started](https://kcns008.github.io/cluster-code/guides/getting-started) - First steps and tutorials
+- [API Reference](https://kcns008.github.io/cluster-code/api/commands) - Complete command reference
 
-### 📁 GitOps Integration
-- Helm chart deployment and management
-- Kustomize overlay support
-- ArgoCD/Flux synchronization
-- CI/CD pipeline integration
+## 💡 Usage Examples
 
-## Plugin Architecture
-
-This repository includes Cluster Code plugins that extend functionality with custom commands and agents:
-
-- **cluster-core**: Core Kubernetes operations and resource management
-- **k8sgpt-analyzers**: AI-powered cluster diagnostics and troubleshooting
-- **cluster-openshift**: OpenShift-specific features and operators
-- **gitops**: GitOps workflows and deployment automation
-- **cloud-providers**: Multi-cloud cluster provisioning (coming soon)
-
-See the [plugins directory](./plugins/README.md) for detailed documentation on available plugins.
-
-## Quick Examples
-
-### Natural Language Interface (Primary Mode)
-
-Just run `cluster-code` and interact in plain English:
+### Interactive Mode (Primary)
 
 ```bash
 $ cluster-code
 
-╔═══════════════════════════════════════════════════════╗
-║            Cluster Code - Interactive Mode            ║
-╚═══════════════════════════════════════════════════════╝
-
-Connected to kubernetes cluster
-Context: my-cluster
-Namespace: production
-
-You: Show me all pods in my namespace
-
-## LLM Provider Configuration
-
-Cluster Code is designed to work with any LLM provider. Similar to [opencode](https://opencode.ai), it uses the [Vercel AI SDK](https://ai-sdk.dev) to support 75+ LLM providers.
-
-### Supported Providers
-
-- **Anthropic (Claude)**: Claude 3.5 Sonnet, Claude 3 Opus, and more
-- **OpenAI (GPT)**: GPT-4, GPT-3.5 Turbo, and more
-- **Google (Gemini)**: Gemini 1.5 Pro, Gemini 1.5 Flash, and more
-- **Ollama**: Run local models like Llama 3, Mistral, and more
-- **OpenAI-Compatible**: LM Studio, LocalAI, and other compatible providers
-
-### Quick Start
-
-#### Using Environment Variables (Easiest)
-
-```sh
-# Anthropic
-export ANTHROPIC_API_KEY=your-key-here
-
-# OpenAI
-export OPENAI_API_KEY=your-key-here
-
-# Google
-export GOOGLE_GENERATIVE_AI_API_KEY=your-key-here
+You: Show me all pods that are failing
+You: Why is my deployment crashing?
+You: Scale my app to 5 replicas
 ```
 
-#### Using Configuration Commands
+### Direct Commands
 
-**List configured providers:**
-```sh
-cluster-code config provider list
+```bash
+# Run cluster diagnostics
+cluster-code diagnose
+
+# Analyze specific resources
+cluster-code analyze pod my-pod
+
+# Deploy with Helm
+cluster-code helm-deploy --chart ./my-chart --release my-app
+
+# Create cloud cluster
+cluster-code azure-cluster-create --type aks --name prod-aks
 ```
 
-**Add a new provider:**
-```sh
-cluster-code config provider add <provider-name>
-```
+## 🔌 Plugin Architecture
 
-**Set active provider:**
-```sh
-cluster-code config provider set <provider-name>
-```
+- **cluster-core** - Core Kubernetes operations
+- **k8sgpt-analyzers** - AI-powered diagnostics
+- **cluster-openshift** - OpenShift-specific features
+- **cloud-providers** - Multi-cloud provisioning
+- **gitops** - Deployment automation
 
-**Show current provider:**
-```sh
-cluster-code config provider show
-```
+[Learn more about plugins →](./plugins/README.md)
 
-**Remove a provider:**
-```sh
-cluster-code config provider remove <provider-name>
-```
+## 🤝 Contributing
 
-### Example Configurations
+We welcome contributions! Check out our [contributing guide](./CONTRIBUTING.md) to get started.
 
-#### Anthropic (Claude)
-```sh
-cluster-code config provider add anthropic
-# Provider type: Anthropic (Claude)
-# API Key: sk-ant-...
-```
+## 📝 License
 
-Then set the model:
-```sh
-cluster-code config provider set anthropic
-# Model: claude-3-5-sonnet-20241022
-```
+MIT License - see [LICENSE](./LICENSE) for details
 
-#### OpenAI (GPT)
-```sh
-cluster-code config provider add openai
-# Provider type: OpenAI (GPT)
-# API Key: sk-...
-```
+## 🔗 Links
 
-Then set the model:
-```sh
-cluster-code config provider set openai
-# Model: gpt-4
-```
+- [Documentation](https://kcns008.github.io/cluster-code)
+- [GitHub Issues](https://github.com/kcns008/cluster-code/issues)
+- [Changelog](./CHANGELOG.md)
 
-#### Ollama (Local Models)
-```sh
-# Start Ollama first
-ollama run llama3
+---
 
-# Add provider
-cluster-code config provider add ollama
-# Provider type: Ollama (Local)
-# Base URL: http://localhost:11434/v1
-
-# Set as active
-cluster-code config provider set ollama
-# Model: llama3
-```
-
-#### Custom OpenAI-Compatible Provider (e.g., LM Studio)
-```sh
-cluster-code config provider add lmstudio
-# Provider type: OpenAI-compatible (Custom)
-# Base URL: http://127.0.0.1:1234/v1
-# API Key: (leave empty for local)
-
-cluster-code config provider set lmstudio
-# Model: your-model-name
-```
-
-### Configuration File
-
-Configuration is stored in `~/.cluster-code/config.json`:
-
-```json
-{
-  "llm": {
-    "provider": "anthropic",
-    "model": "claude-3-5-sonnet-20241022",
-    "maxTokens": 4096
-  },
-  "providers": {
-    "anthropic": {
-      "type": "anthropic",
-      "name": "Anthropic",
-      "apiKey": "sk-ant-..."
-    },
-    "openai": {
-      "type": "openai",
-      "name": "OpenAI",
-      "apiKey": "sk-..."
-    },
-    "ollama": {
-      "type": "ollama",
-      "name": "Ollama",
-      "baseURL": "http://localhost:11434/v1"
-    }
-  }
-}
-```
-
-## Data collection, usage, and retention
-
-When you use Cluster Code, any data sent to LLM providers is subject to their respective privacy policies:
-
-- **Anthropic**: [Privacy Policy](https://www.anthropic.com/legal/privacy)
-- **OpenAI**: [Privacy Policy](https://openai.com/policies/privacy-policy)
-- **Google**: [Privacy Policy](https://policies.google.com/privacy)
-- **Local Models (Ollama)**: Data stays on your machine
-
-### Privacy safeguards
-
-- Use environment variables to avoid storing API keys in configuration files
-- Use local models (Ollama) for complete data privacy
-- All cluster data remains local unless explicitly sent to an LLM for analysis
+**Ready to get started?** Install cluster-code and check out our [Quick Start Guide](https://kcns008.github.io/cluster-code/guides/getting-started) →

@@ -9,10 +9,10 @@ permalink: /
 # Cluster Code
 {: .fs-9 }
 
-AI-Powered Kubernetes & OpenShift Cluster Management across Multi-Cloud Environments
+AI-powered CLI tool for Kubernetes and OpenShift cluster management with intelligent diagnostics, multi-cloud support, and GitOps workflows.
 {: .fs-6 .fw-300 }
 
-[Get Started](/guides/getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[Get Started](/cluster-code/guides/getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [View on GitHub](https://github.com/kcns008/cluster-code){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 ---
@@ -175,45 +175,25 @@ cluster-code flux-reconcile \
 
 ---
 
-## Quick Start
-
-### 1. Install Cluster Code
+## ⚡ Quick Start
 
 ```bash
-# Global install (scoped)
-npm install -g @cluster-code/cluster-code
-
-# Global install (unscoped alias)
+# 1. Install
 npm install -g cluster-code
 
-# Or clone repository
-git clone https://github.com/kcns008/cluster-code.git
-cd cluster-code
-npm install
+# 2. Configure LLM Provider
+export ANTHROPIC_API_KEY=your-api-key
+# or use OpenAI, Google, or local Ollama
+
+# 3. Connect & Go
+cluster-code init
+cluster-code
 ```
 
-### 2. Connect to Your Cluster
+That's it! Start chatting with your cluster in plain English.
 
-```bash
-# Initialize connection to existing cluster
-cluster-code init --context my-cluster --namespace default
-
-# Or create a new cluster
-cluster-code azure-cluster-create --type aks --name my-cluster --resource-group my-rg
-```
-
-### 3. Run Diagnostics
-
-```bash
-# Check cluster health
-cluster-code status
-
-# Run full diagnostics
-cluster-code diagnose
-
-# Start interactive troubleshooting
-cluster-code chat "Why are my pods crashing?"
-```
+[View detailed installation guide →](/cluster-code/guides/installation){: .btn .btn-outline }
+[Configure LLM providers →](/cluster-code/guides/llm-providers){: .btn .btn-outline }
 
 ---
 
@@ -322,31 +302,28 @@ cluster-code/
 - 📚 API reference documentation
 - 📚 Step-by-step tutorials
 
-[View Full Changelog](https://github.com/your-org/cluster-code/blob/main/CHANGELOG.md)
+[View Full Changelog](https://github.com/kcns008/cluster-code/blob/main/CHANGELOG.md)
 
 ---
 
 ## Community & Support
 
 ### Get Help
-- 📖 [Documentation](/guides/getting-started)
-- 💬 [Discord Community](https://discord.gg/cluster-code)
-- 🐛 [GitHub Issues](https://github.com/your-org/cluster-code/issues)
-- 📧 Email: support@cluster-code.io
+- 📖 [Documentation](/cluster-code/guides/getting-started)
+- 🐛 [GitHub Issues](https://github.com/kcns008/cluster-code/issues)
+- 💬 [GitHub Discussions](https://github.com/kcns008/cluster-code/discussions)
 
 ### Contributing
-We welcome contributions! See our [Contributing Guide](https://github.com/your-org/cluster-code/blob/main/CONTRIBUTING.md).
+We welcome contributions! See our [Contributing Guide](https://github.com/kcns008/cluster-code/blob/main/CONTRIBUTING.md).
 
 ### Stay Updated
-- ⭐ [Star us on GitHub](https://github.com/your-org/cluster-code)
-- 🐦 [Follow on Twitter](https://twitter.com/cluster_code)
-- 📬 [Subscribe to Newsletter](https://cluster-code.io/newsletter)
+- ⭐ [Star us on GitHub](https://github.com/kcns008/cluster-code)
 
 ---
 
 ## License
 
-Cluster Code is open source software licensed under the [MIT License](https://github.com/your-org/cluster-code/blob/main/LICENSE).
+Cluster Code is open source software licensed under the [MIT License](https://github.com/kcns008/cluster-code/blob/main/LICENSE).
 
 ---
 
@@ -354,13 +331,12 @@ Cluster Code is open source software licensed under the [MIT License](https://gi
 
 Ready to get started? Check out our guides:
 
-- [Installation Guide](/guides/installation) - Set up Cluster Code
-- [First Cluster Tutorial](/tutorials/first-cluster) - Create your first cluster
-- [Configuration Guide](/guides/configuration) - Configure plugins and cloud providers
-- [Diagnostics Guide](/guides/diagnostics) - Learn AI-powered troubleshooting
+- [Installation Guide](/cluster-code/guides/installation) - Set up Cluster Code
+- [LLM Provider Setup](/cluster-code/guides/llm-providers) - Configure AI providers
+- [Getting Started](/cluster-code/guides/getting-started) - Your first steps
+- [First Cluster Tutorial](/cluster-code/tutorials/first-cluster) - Create your first cluster
 
-Or explore specific features:
-- [Azure Integration](/plugins/cloud-azure)
-- [AWS Integration](/plugins/cloud-aws)
-- [OpenShift Features](/plugins/cluster-openshift)
-- [GitOps Workflows](/plugins/gitops)
+Or explore the documentation:
+- [User Guides](/cluster-code/guides) - Comprehensive guides for all features
+- [Tutorials](/cluster-code/tutorials) - Hands-on learning
+- [API Reference](/cluster-code/api) - Complete command reference
