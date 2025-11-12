@@ -4,158 +4,137 @@
 title: Cluster Code
 tagline: AI-Powered Kubernetes & OpenShift Cluster Management
 description: >-
-  Comprehensive CLI tool for building, maintaining, and troubleshooting
-  Kubernetes and OpenShift clusters across multi-cloud environments with
-  AI-powered diagnostics and GitOps automation.
+  AI-powered CLI tool for Kubernetes and OpenShift cluster management with
+  intelligent diagnostics, multi-cloud support, and GitOps workflows.
 
 baseurl: "/cluster-code"
-url: "https://your-org.github.io"
-
-# Author/Organization
-author:
-  name: Cluster Code Team
-  email: support@cluster-code.io
-  github: your-org/cluster-code
+url: "https://kcns008.github.io"
 
 # Repository
-repository: your-org/cluster-code
+repository: kcns008/cluster-code
 github_branch: main
 
-# Theme
-theme: jekyll-theme-cayman
-# Or use remote theme: remote_theme: pmarsceill/just-the-docs
+# Theme - Using Just the Docs for modern, clean documentation
+remote_theme: just-the-docs/just-the-docs@v0.8.2
 
-# Markdown
-markdown: kramdown
-kramdown:
-  input: GFM
-  syntax_highlighter: rouge
-  syntax_highlighter_opts:
-    block:
-      line_numbers: true
+# Color scheme
+color_scheme: dark
 
-# Permalinks
-permalink: pretty
+# Logo
+logo: "/assets/images/logo.png"
+
+# Aux links (top right)
+aux_links:
+  "GitHub":
+    - "https://github.com/kcns008/cluster-code"
+  "npm":
+    - "https://www.npmjs.com/package/cluster-code"
+
+# Footer
+footer_content: >-
+  Copyright &copy; 2024 Cluster Code Team.
+  Distributed under the <a href="https://github.com/kcns008/cluster-code/blob/main/LICENSE">MIT License</a>.
+
+# Back to top link
+back_to_top: true
+back_to_top_text: "Back to top"
+
+# Footer last edit timestamp
+last_edit_timestamp: true
+last_edit_time_format: "%b %e %Y at %I:%M %p"
+
+# GitHub edit link
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/kcns008/cluster-code"
+gh_edit_branch: "main"
+gh_edit_view_mode: "tree"
+
+# Search
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 3
+  preview_words_before: 5
+  preview_words_after: 10
+  tokenizer_separator: /[\s/]+/
+  rel_url: true
+  button: false
+
+# Mermaid diagrams
+mermaid:
+  version: "10.6.1"
+
+# Code copy button
+enable_copy_code_button: true
+
+# Callouts (for notes, warnings, etc.)
+callouts_level: quiet
+callouts:
+  highlight:
+    color: yellow
+  important:
+    title: Important
+    color: blue
+  new:
+    title: New
+    color: green
+  note:
+    title: Note
+    color: purple
+  warning:
+    title: Warning
+    color: red
 
 # Collections
 collections:
   guides:
+    permalink: "/:collection/:path/"
     output: true
-    permalink: /guides/:name/
   api:
+    permalink: "/:collection/:path/"
     output: true
-    permalink: /api/:name/
   tutorials:
+    permalink: "/:collection/:path/"
     output: true
-    permalink: /tutorials/:name/
-  plugins:
-    output: true
-    permalink: /plugins/:name/
 
 # Defaults
 defaults:
   - scope:
       path: ""
+    values:
+      layout: "default"
+  - scope:
+      path: ""
       type: "guides"
     values:
-      layout: "guide"
+      layout: "default"
+      parent: "Guides"
   - scope:
       path: ""
       type: "api"
     values:
-      layout: "api"
+      layout: "default"
+      parent: "API Reference"
   - scope:
       path: ""
       type: "tutorials"
     values:
-      layout: "tutorial"
-  - scope:
-      path: ""
-      type: "plugins"
-    values:
-      layout: "plugin"
+      layout: "default"
+      parent: "Tutorials"
 
-# Navigation
-navigation:
-  - title: Home
-    url: /
-  - title: Getting Started
-    url: /guides/getting-started
-  - title: User Guides
-    url: /guides/
-    children:
-      - title: Installation
-        url: /guides/installation
-      - title: Configuration
-        url: /guides/configuration
-      - title: Cluster Connection
-        url: /guides/cluster-connection
-      - title: Diagnostics
-        url: /guides/diagnostics
-      - title: Cloud Providers
-        url: /guides/cloud-providers
-      - title: GitOps Workflows
-        url: /guides/gitops
-  - title: Tutorials
-    url: /tutorials/
-    children:
-      - title: Create Your First Cluster
-        url: /tutorials/first-cluster
-      - title: Deploy with Helm
-        url: /tutorials/helm-deployment
-      - title: Troubleshoot Pod Issues
-        url: /tutorials/pod-troubleshooting
-      - title: OpenShift Routes
-        url: /tutorials/openshift-routes
-  - title: Plugins
-    url: /plugins/
-    children:
-      - title: cluster-core
-        url: /plugins/cluster-core
-      - title: k8sgpt-analyzers
-        url: /plugins/k8sgpt-analyzers
-      - title: cloud-azure
-        url: /plugins/cloud-azure
-      - title: cloud-aws
-        url: /plugins/cloud-aws
-      - title: cloud-gcp
-        url: /plugins/cloud-gcp
-      - title: cluster-openshift
-        url: /plugins/cluster-openshift
-      - title: gitops
-        url: /plugins/gitops
-  - title: API Reference
-    url: /api/
-    children:
-      - title: Commands
-        url: /api/commands
-      - title: Agents
-        url: /api/agents
-      - title: MCP Servers
-        url: /api/mcp-servers
-      - title: Configuration
-        url: /api/configuration
-  - title: Community
-    url: /community
-  - title: GitHub
-    url: https://github.com/your-org/cluster-code
-    external: true
+# Markdown
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
 
-# Features
-features:
-  search: true
-  toc: true
-  syntax_highlighting: true
-  feedback: true
-
-# Analytics (optional)
-google_analytics: UA-XXXXXXXXX-X
-
-# Social
-social:
-  github: your-org/cluster-code
-  twitter: cluster_code
-  discord: https://discord.gg/cluster-code
+# Permalinks
+permalink: pretty
 
 # Exclude from processing
 exclude:
@@ -166,18 +145,27 @@ exclude:
   - .bundle
   - .git
   - .github
-  - README.md
-
-# Include
-include:
-  - _pages
+  - "*.gemspec"
+  - "*.gem"
 
 # Plugins
 plugins:
-  - jekyll-feed
   - jekyll-seo-tag
-  - jekyll-sitemap
-  - jekyll-relative-links
-  - jekyll-optional-front-matter
-  - jekyll-readme-index
-  - jekyll-titles-from-headings
+  - jekyll-github-metadata
+  - jekyll-include-cache
+
+# Compression
+sass:
+  style: compressed
+
+# Heading anchors
+heading_anchors: true
+
+# External navigation links
+nav_external_links:
+  - title: Cluster Code on GitHub
+    url: https://github.com/kcns008/cluster-code
+    hide_icon: false
+  - title: npm Package
+    url: https://www.npmjs.com/package/cluster-code
+    hide_icon: false
