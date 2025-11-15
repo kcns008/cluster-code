@@ -311,18 +311,51 @@ Convert user requests in natural language into the appropriate CLI commands. You
     if (context.clusterInfo.cloud) {
       prompt += `- Cloud Provider: ${context.clusterInfo.cloud}\n`;
     }
+
+    // Recommend appropriate CLI tool
+    const ocAvailable = availableTools.some(t => t.name === 'oc');
+    const kubectlAvailable = availableTools.some(t => t.name === 'kubectl');
+
+    if (context.clusterInfo.type === 'openshift' && ocAvailable) {
+      prompt += `\n**IMPORTANT**: This is an OpenShift cluster. Use the \`oc\` command instead of \`kubectl\` for all cluster operations.\n`;
+    } else if (context.clusterInfo.type === 'openshift' && !ocAvailable && kubectlAvailable) {
+      prompt += `\n**NOTE**: This is an OpenShift cluster, but \`oc\` is not available. Using \`kubectl\` instead.\n`;
+    } else if (context.clusterInfo.type === 'kubernetes' && kubectlAvailable) {
+      prompt += `\n**IMPORTANT**: Use the \`kubectl\` command for all cluster operations.\n`;
+    }
+
+    // Add cloud-specific CLI recommendations
+    if (context.clusterInfo.cloud === 'aws') {
+      const awsAvailable = availableTools.some(t => t.name === 'aws');
+      if (awsAvailable) {
+        prompt += `For AWS-specific operations, use the \`aws\` CLI.\n`;
+      }
+    } else if (context.clusterInfo.cloud === 'azure') {
+      const azAvailable = availableTools.some(t => t.name === 'az');
+      if (azAvailable) {
+        prompt += `For Azure-specific operations, use the \`az\` CLI.\n`;
+      }
+    } else if (context.clusterInfo.cloud === 'gcp') {
+      const gcloudAvailable = availableTools.some(t => t.name === 'gcloud');
+      if (gcloudAvailable) {
+        prompt += `For GCP-specific operations, use the \`gcloud\` CLI.\n`;
+      }
+    }
+
     prompt += '\n';
   }
 
   prompt += `## Instructions
 1. Understand the user's intent from their natural language request
 2. Generate the appropriate CLI command(s) to accomplish the task
-3. Always explain what the command does and why you chose it
-4. If multiple commands are needed, show them in sequence
-5. Use the current cluster context (namespace, context) when generating kubectl/oc commands
-6. If the request is ambiguous, ask clarifying questions
-7. Provide the command in a code block for easy copying
-8. If the command might be destructive (delete, scale down, etc.), warn the user
+3. Always use the correct CLI tool based on the cluster type (oc for OpenShift, kubectl for Kubernetes)
+4. Always explain what the command does and why you chose it
+5. If multiple commands are needed, show them in sequence
+6. Use the current cluster context (namespace, context) when generating commands
+7. If the request is ambiguous, ask clarifying questions
+8. Provide the command in a code block for easy copying
+9. If the command might be destructive (delete, scale down, etc.), warn the user
+10. Show the complete command being run when appropriate
 
 ## Response Format
 When generating commands, use this format:
@@ -340,10 +373,15 @@ When generating commands, use this format:
 
 ## Examples
 
-User: "Show me all pods in the current namespace"
+`;
+
+  // Add cluster-specific example
+  const exampleCLI = context.clusterInfo?.type === 'openshift' ? 'oc' : 'kubectl';
+
+  prompt += `User: "Show me all pods in the current namespace"
 **Command:**
 \`\`\`bash
-kubectl get pods
+${exampleCLI} get pods
 \`\`\`
 
 **Explanation:**
@@ -357,7 +395,7 @@ You would need more information, so respond:
 1. What is the name of the pod?
 2. Have you checked the logs yet?
 
-Once I know the pod name, I can help you run \`kubectl logs <pod-name>\` and \`kubectl describe pod <pod-name>\` to investigate."
+Once I know the pod name, I can help you run \`${exampleCLI} logs <pod-name>\` and \`${exampleCLI} describe pod <pod-name>\` to investigate."
 
 Now, respond to the user's requests in natural language and convert them to appropriate CLI commands.
 `;

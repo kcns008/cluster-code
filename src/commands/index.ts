@@ -13,3 +13,4 @@ export {
   providerSetCommand,
   providerShowCommand
 } from './provider';
+export { infoCommand, infoHelpInstallCommand } from './info';

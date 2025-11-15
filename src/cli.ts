@@ -21,6 +21,8 @@ import {
   providerRemoveCommand,
   providerSetCommand,
   providerShowCommand,
+  infoCommand,
+  infoHelpInstallCommand,
 } from './commands';
 import { logger } from './utils/logger';
 import { ConfigManager } from './config';
@@ -59,6 +61,24 @@ program
   .action(async () => {
     try {
       await diagnoseCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+// Info command
+program
+  .command('info')
+  .description('Show cluster and CLI tool information')
+  .option('--help-install <tool>', 'Show installation instructions for a specific tool')
+  .action(async (options) => {
+    try {
+      if (options.helpInstall) {
+        await infoHelpInstallCommand(options.helpInstall);
+      } else {
+        await infoCommand();
+      }
     } catch (error: any) {
       logger.error(error.message);
       process.exit(1);
