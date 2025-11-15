@@ -67,6 +67,11 @@ export class Logger {
     console.log(chalk.bold.cyan('━'.repeat(50)) + '\n');
   }
 
+  subsection(title: string): void {
+    console.log('\n' + chalk.bold.blue(`▸ ${title}`));
+    console.log(chalk.gray('─'.repeat(40)));
+  }
+
   table(data: any[]): void {
     console.table(data);
   }

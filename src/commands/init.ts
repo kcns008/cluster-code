@@ -5,7 +5,9 @@
 import inquirer from 'inquirer';
 import { configManager } from '../config';
 import { logger } from '../utils/logger';
-import { getCurrentContext, getContexts, getNamespaces, isKubectlAvailable, isClusterReachable } from '../utils/kubectl';
+import { getCurrentContext, getContexts, getNamespaces, isKubectlAvailable, isClusterReachable, resetCLICache } from '../utils/kubectl';
+import { detectCluster, ClusterType, CloudProvider } from '../utils/cluster-detector';
+import { getAllCLIVersions } from '../utils/cli-version-manager';
 
 interface InitOptions {
   context?: string;
@@ -64,6 +66,46 @@ export async function initCommand(options: InitOptions): Promise<void> {
     }
     logger.succeedSpinner('Connected to cluster');
 
+    // Detect cluster type
+    logger.newline();
+    try {
+      const clusterInfo = await detectCluster(true);
+      logger.newline();
+      logger.info(`Cluster Type: ${clusterInfo.type}`);
+      if (clusterInfo.distribution) {
+        logger.info(`Distribution: ${clusterInfo.distribution}`);
+      }
+      if (clusterInfo.cloud && clusterInfo.cloud !== 'unknown') {
+        logger.info(`Cloud Provider: ${clusterInfo.cloud.toUpperCase()}`);
+      }
+
+      // Check CLI versions
+      logger.newline();
+      logger.startSpinner('Checking CLI tool versions...');
+      const cliVersions = await getAllCLIVersions(false);
+      logger.succeedSpinner('CLI version check complete');
+
+      // Find relevant CLI for this cluster
+      const relevantCLI = clusterInfo.type === 'openshift' ? 'oc' : 'kubectl';
+      const cliInfo = cliVersions.find(cli => cli.name === relevantCLI);
+
+      if (cliInfo && !cliInfo.versionMatch && cliInfo.serverVersion) {
+        logger.newline();
+        logger.warning(`Recommended: ${relevantCLI} client version should match server version ${cliInfo.serverVersion}`);
+      }
+
+      // Store detected info in config (will be saved later)
+      // This is a temporary variable, will be merged with full config below
+      var detectedType: ClusterType | undefined = clusterInfo.type;
+      var detectedCloud: CloudProvider | undefined = clusterInfo.cloud !== 'unknown' ? clusterInfo.cloud : undefined;
+    } catch (error: any) {
+      logger.warning(`Cluster detection failed: ${error.message}`);
+      logger.info('Continuing with initialization...');
+      var detectedType: ClusterType | undefined = undefined;
+      var detectedCloud: CloudProvider | undefined = undefined;
+    }
+    logger.newline();
+
     // Get namespace if not provided
     if (!namespace) {
       const namespaces = await getNamespaces({ context });
@@ -86,12 +128,23 @@ export async function initCommand(options: InitOptions): Promise<void> {
       context: context!,
       namespace: namespace!,
       kubeconfig: options.kubeconfig,
+      type: detectedType,
+      cloud: detectedCloud,
     });
+
+    // Reset CLI cache to force re-detection with new config
+    resetCLICache();
 
     logger.newline();
     logger.success('Cluster configuration saved successfully!');
     logger.info(`Context: ${context}`);
     logger.info(`Namespace: ${namespace}`);
+    if (detectedType) {
+      logger.info(`Type: ${detectedType}`);
+    }
+    if (detectedCloud) {
+      logger.info(`Cloud: ${detectedCloud.toUpperCase()}`);
+    }
 
     // Check for API key
     const config = configManager.getConfig();
