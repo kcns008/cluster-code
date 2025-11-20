@@ -68,6 +68,10 @@ export async function initCommand(options: InitOptions): Promise<void> {
 
     // Detect cluster type
     logger.newline();
+    // Store detected info in config (will be saved later)
+    let detectedType: ClusterType | undefined;
+    let detectedCloud: CloudProvider | undefined;
+
     try {
       const clusterInfo = await detectCluster(true);
       logger.newline();
@@ -94,15 +98,13 @@ export async function initCommand(options: InitOptions): Promise<void> {
         logger.warning(`Recommended: ${relevantCLI} client version should match server version ${cliInfo.serverVersion}`);
       }
 
-      // Store detected info in config (will be saved later)
-      // This is a temporary variable, will be merged with full config below
-      var detectedType: ClusterType | undefined = clusterInfo.type;
-      var detectedCloud: CloudProvider | undefined = clusterInfo.cloud !== 'unknown' ? clusterInfo.cloud : undefined;
+      detectedType = clusterInfo.type;
+      detectedCloud = clusterInfo.cloud !== 'unknown' ? clusterInfo.cloud : undefined;
     } catch (error: any) {
       logger.warning(`Cluster detection failed: ${error.message}`);
       logger.info('Continuing with initialization...');
-      var detectedType: ClusterType | undefined = undefined;
-      var detectedCloud: CloudProvider | undefined = undefined;
+      detectedType = undefined;
+      detectedCloud = undefined;
     }
     logger.newline();
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0 - Initial Release (2025-11-19)
+
+### Features
+- Initial release of Cluster Code
+- AI-powered CLI tool for Kubernetes and OpenShift cluster management
+- Interactive chat mode
+- Cluster diagnostics
+
 ## 1.3.0 - Phase 4+ Implementation: Complete Cluster Lifecycle Management (2025-10-31)
 
 ### Major Features

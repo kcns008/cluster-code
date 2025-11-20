@@ -65,7 +65,8 @@ export class ChatSession {
   }
 
   private async chatLoop(): Promise<void> {
-    while (true) {
+    let isRunning = true;
+    while (isRunning) {
       const { userInput } = await inquirer.prompt([
         {
           type: 'input',
@@ -84,6 +85,7 @@ export class ChatSession {
       // Check for exit commands
       if (input.toLowerCase() === 'exit' || input.toLowerCase() === 'quit') {
         logger.info('Goodbye! 👋');
+        isRunning = false;
         break;
       }
 
