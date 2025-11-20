@@ -15,6 +15,173 @@ interface InitOptions {
   kubeconfig?: string;
 }
 
+/**
+ * Interactive setup for LLM provider
+ */
+async function setupLLMProvider(): Promise<void> {
+  logger.newline();
+  logger.section('LLM Provider Setup');
+
+  // Prompt for provider type
+  const { providerType } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'providerType',
+      message: 'Select LLM provider:',
+      choices: [
+        { name: 'Anthropic (Claude) - Recommended', value: 'anthropic' },
+        { name: 'OpenAI (GPT)', value: 'openai' },
+        { name: 'Google (Gemini)', value: 'google' },
+        { name: 'Ollama (Local models)', value: 'ollama' },
+        { name: 'OpenAI-compatible (Custom endpoint)', value: 'openai-compatible' },
+      ],
+    },
+  ]);
+
+  // Provider-specific configuration
+  let apiKey: string | undefined;
+  let baseURL: string | undefined;
+  let model: string;
+
+  switch (providerType) {
+    case 'anthropic':
+      logger.info('Get your API key from: https://console.anthropic.com/');
+      const anthropicAnswers = await inquirer.prompt([
+        {
+          type: 'password',
+          name: 'apiKey',
+          message: 'Enter your Anthropic API key:',
+          mask: '*',
+          validate: (input) => input.trim() !== '' || 'API key is required',
+        },
+      ]);
+      apiKey = anthropicAnswers.apiKey;
+      model = 'claude-3-5-sonnet-20241022';
+      break;
+
+    case 'openai':
+      logger.info('Get your API key from: https://platform.openai.com/');
+      const openaiAnswers = await inquirer.prompt([
+        {
+          type: 'password',
+          name: 'apiKey',
+          message: 'Enter your OpenAI API key:',
+          mask: '*',
+          validate: (input) => input.trim() !== '' || 'API key is required',
+        },
+      ]);
+      apiKey = openaiAnswers.apiKey;
+      model = 'gpt-4';
+      break;
+
+    case 'google':
+      logger.info('Get your API key from: https://makersuite.google.com/app/apikey');
+      const googleAnswers = await inquirer.prompt([
+        {
+          type: 'password',
+          name: 'apiKey',
+          message: 'Enter your Google API key:',
+          mask: '*',
+          validate: (input) => input.trim() !== '' || 'API key is required',
+        },
+      ]);
+      apiKey = googleAnswers.apiKey;
+      model = 'gemini-1.5-pro';
+      break;
+
+    case 'ollama':
+      logger.info('Make sure Ollama is running locally (ollama serve)');
+      const ollamaAnswers = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'baseURL',
+          message: 'Ollama base URL:',
+          default: 'http://localhost:11434/v1',
+        },
+        {
+          type: 'input',
+          name: 'model',
+          message: 'Model name (e.g., llama3:8b):',
+          default: 'llama3:8b',
+          validate: (input) => input.trim() !== '' || 'Model name is required',
+        },
+      ]);
+      baseURL = ollamaAnswers.baseURL;
+      model = ollamaAnswers.model;
+      break;
+
+    case 'openai-compatible':
+      const customAnswers = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'baseURL',
+          message: 'API base URL:',
+          validate: (input) => input.trim() !== '' || 'Base URL is required',
+        },
+        {
+          type: 'input',
+          name: 'apiKey',
+          message: 'API key (leave empty if not required):',
+        },
+        {
+          type: 'input',
+          name: 'model',
+          message: 'Model name:',
+          validate: (input) => input.trim() !== '' || 'Model name is required',
+        },
+      ]);
+      baseURL = customAnswers.baseURL;
+      apiKey = customAnswers.apiKey || undefined;
+      model = customAnswers.model;
+      break;
+
+    default:
+      logger.error('Invalid provider type');
+      return;
+  }
+
+  // Save provider configuration
+  const providerConfig: any = {
+    type: providerType,
+    name: getProviderDisplayName(providerType),
+  };
+
+  if (apiKey) {
+    providerConfig.apiKey = apiKey;
+  }
+
+  if (baseURL) {
+    providerConfig.baseURL = baseURL;
+  }
+
+  configManager.setProvider(providerType, providerConfig);
+
+  // Set as active LLM configuration
+  configManager.setLLMConfig({
+    provider: providerType,
+    model: model,
+    maxTokens: 4096,
+  });
+
+  logger.newline();
+  logger.success(`${getProviderDisplayName(providerType)} configured successfully!`);
+  logger.info(`Active provider: ${providerType}/${model}`);
+}
+
+/**
+ * Get display name for provider type
+ */
+function getProviderDisplayName(type: string): string {
+  const names: Record<string, string> = {
+    anthropic: 'Anthropic',
+    openai: 'OpenAI',
+    google: 'Google',
+    ollama: 'Ollama',
+    'openai-compatible': 'Custom Provider',
+  };
+  return names[type] || 'Unknown Provider';
+}
+
 export async function initCommand(options: InitOptions): Promise<void> {
   logger.section('Cluster Code Initialization');
 
@@ -148,44 +315,32 @@ export async function initCommand(options: InitOptions): Promise<void> {
       logger.info(`Cloud: ${detectedCloud.toUpperCase()}`);
     }
 
-    // Check for API key
-    const config = configManager.getConfig();
-    const apiKey = process.env.ANTHROPIC_API_KEY || config.anthropicApiKey;
-
-    if (!apiKey) {
+    // Check for LLM provider configuration
+    if (!configManager.isLLMConfigured()) {
       logger.newline();
-      logger.warning('ANTHROPIC_API_KEY not configured');
-      logger.info('To use the interactive natural language interface, you need an Anthropic API key.');
-      logger.info('Get your API key from: https://console.anthropic.com/');
+      logger.warning('No LLM provider configured');
+      logger.info('To use the interactive natural language interface, you need to configure an LLM provider.');
 
-      const { setupApiKey } = await inquirer.prompt([
+      const { setupProvider } = await inquirer.prompt([
         {
           type: 'confirm',
-          name: 'setupApiKey',
-          message: 'Would you like to configure your API key now?',
+          name: 'setupProvider',
+          message: 'Would you like to configure an LLM provider now?',
           default: true,
         },
       ]);
 
-      if (setupApiKey) {
-        const { apiKeyInput } = await inquirer.prompt([
-          {
-            type: 'password',
-            name: 'apiKeyInput',
-            message: 'Enter your Anthropic API key:',
-            mask: '*',
-          },
-        ]);
-
-        if (apiKeyInput) {
-          configManager.set('anthropicApiKey', apiKeyInput);
-          logger.success('API key saved successfully!');
-        }
+      if (setupProvider) {
+        await setupLLMProvider();
       } else {
-        logger.info('You can configure it later:');
-        logger.info('  export ANTHROPIC_API_KEY=your-key-here');
-        logger.info('Or:');
-        logger.info('  cluster-code config set anthropicApiKey your-key-here');
+        logger.newline();
+        logger.info('You can configure a provider later using:');
+        logger.info('  cluster-code config provider add <provider-name>');
+        logger.info('');
+        logger.info('Or use environment variables:');
+        logger.info('  export ANTHROPIC_API_KEY=your-key     # For Anthropic Claude');
+        logger.info('  export OPENAI_API_KEY=your-key        # For OpenAI GPT');
+        logger.info('  export GOOGLE_GENERATIVE_AI_API_KEY=your-key  # For Google Gemini');
       }
     }
 
