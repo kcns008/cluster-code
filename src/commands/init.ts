@@ -8,7 +8,6 @@ import { logger } from '../utils/logger';
 import { getCurrentContext, getContexts, getNamespaces, isKubectlAvailable, isClusterReachable, resetCLICache } from '../utils/kubectl';
 import { detectCluster, ClusterType, CloudProvider } from '../utils/cluster-detector';
 import { getAllCLIVersions } from '../utils/cli-version-manager';
-import { setupMgrep } from '../utils/mgrep';
 
 interface InitOptions {
   context?: string;
@@ -343,28 +342,6 @@ export async function initCommand(options: InitOptions): Promise<void> {
         logger.info('  export OPENAI_API_KEY=your-key        # For OpenAI GPT');
         logger.info('  export GOOGLE_GENERATIVE_AI_API_KEY=your-key  # For Google Gemini');
       }
-    }
-
-    // Optional: Set up mgrep for semantic code search
-    logger.newline();
-    const { setupMgrepPlugin } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'setupMgrepPlugin',
-        message: 'Would you like to enable mgrep semantic code search? (Recommended for better AI code understanding)',
-        default: true,
-      },
-    ]);
-
-    if (setupMgrepPlugin) {
-      await setupMgrep();
-    } else {
-      logger.newline();
-      logger.info('You can set up mgrep later for enhanced semantic code search:');
-      logger.info('  npm install -g @mixedbread/mgrep');
-      logger.info('  mgrep login');
-      logger.info('  mgrep install-claude-code');
-      logger.info('  mgrep watch');
     }
 
     logger.newline();
