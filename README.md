@@ -41,6 +41,7 @@ That's it! Start chatting with your cluster in plain English.
 
 - 💬 **Natural Language Interface** - Control your cluster using plain English
 - 🔍 **AI-Powered Diagnostics** - Intelligent troubleshooting with K8sGPT
+- 🔎 **Semantic Code Search** - Auto-enabled mgrep integration for 2x better token efficiency
 - ☁️ **Multi-Cloud Support** - AWS EKS, Azure AKS/ARO, GCP GKE
 - 🚀 **GitOps Ready** - Helm, Kustomize, ArgoCD, Flux integration
 - 🔒 **Local LLM Support** - Use Ollama for complete data privacy
@@ -92,6 +93,46 @@ cluster-code azure-cluster-create --type aks --name prod-aks
 - **gitops** - Deployment automation
 
 [Learn more about plugins →](./plugins/README.md)
+
+## 🔎 Semantic Code Search with mgrep
+
+Cluster Code integrates with [mgrep](https://github.com/mixedbread-ai/mgrep) to provide AI-powered semantic code search, using **2x fewer tokens** than traditional grep-based workflows.
+
+### Auto-Enable During Init
+
+During `cluster-code init`, you'll be prompted to enable mgrep:
+
+```bash
+$ cluster-code init
+...
+? Would you like to enable mgrep semantic code search? (Recommended) Yes
+```
+
+This will:
+1. Install `@mixedbread/mgrep` globally (if needed)
+2. Authenticate with Mixedbread (browser or API key)
+3. Install the mgrep Claude Code plugin
+4. Optionally start indexing your repository
+
+### Manual Setup
+
+If you skip during init, you can set it up later:
+
+```bash
+npm install -g @mixedbread/mgrep
+mgrep login
+mgrep install-claude-code
+mgrep watch
+```
+
+### Benefits
+
+- 🚀 **2x Token Efficiency** - Uses fewer tokens with better search quality
+- 🧠 **Semantic Understanding** - Finds code by intent, not just keywords
+- 📁 **Multi-Format Support** - Search code, images, PDFs, and more
+- 🔄 **Live Sync** - Keeps your code index up-to-date automatically
+
+Learn more at [mixedbread.ai/mgrep](https://github.com/mixedbread-ai/mgrep)
 
 ## 🤝 Contributing
 
