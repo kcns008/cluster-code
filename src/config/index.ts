@@ -9,6 +9,7 @@ import { getDefaultLLMConfig } from '../llm';
 
 const CONFIG_DIR = path.join(process.env.HOME || process.env.USERPROFILE || '', '.cluster-code');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+const CLAUDE_SETTINGS_FILE = path.join(process.env.HOME || process.env.USERPROFILE || '', '.claude', 'settings.json');
 
 export class ConfigManager {
   private config: ClusterCodeConfig;
@@ -33,6 +34,9 @@ export class ConfigManager {
 
     // Migrate legacy config if needed
     this.migrateLegacyConfig();
+
+    // Load Claude Code settings if available
+    this.loadClaudeCodeSettings();
   }
 
   /**
@@ -62,6 +66,54 @@ export class ConfigManager {
       }
 
       this.save();
+    }
+  }
+
+  /**
+   * Load Claude Code settings if available and no LLM is configured
+   */
+  private loadClaudeCodeSettings(): void {
+    // Only auto-load if no LLM provider is configured
+    if (this.config.llm || (this.config.providers && Object.keys(this.config.providers).length > 0)) {
+      return;
+    }
+
+    // Check if Claude Code settings file exists
+    if (!fs.existsSync(CLAUDE_SETTINGS_FILE)) {
+      return;
+    }
+
+    try {
+      const data = fs.readFileSync(CLAUDE_SETTINGS_FILE, 'utf-8');
+      const claudeSettings = JSON.parse(data);
+
+      // Extract API key from Claude settings
+      if (claudeSettings.apiKey && typeof claudeSettings.apiKey === 'string') {
+        // Initialize providers if not present
+        if (!this.config.providers) {
+          this.config.providers = {};
+        }
+
+        // Set up Anthropic provider with Claude API key
+        this.config.providers['anthropic'] = {
+          type: 'anthropic',
+          name: 'Anthropic',
+          apiKey: claudeSettings.apiKey,
+        };
+
+        // Set default LLM configuration
+        this.config.llm = {
+          provider: 'anthropic',
+          model: 'claude-3-5-sonnet-20241022',
+          maxTokens: 4096,
+        };
+
+        this.save();
+      }
+    } catch (error) {
+      // Silently fail if Claude settings cannot be read or parsed
+      // This is intentional - we don't want to break initialization
+      // if Claude Code settings are corrupted or inaccessible
     }
   }
 
