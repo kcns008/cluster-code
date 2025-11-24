@@ -17,13 +17,14 @@ npm install -g cluster-code
 ### Configure LLM Provider
 
 ```sh
-# Anthropic (Claude)
-export ANTHROPIC_API_KEY=your-api-key
+# Option 1: Auto-detect from Claude Code (if ~/.claude/settings.json exists)
+# cluster-code will automatically use your Claude API key
 
-# Or OpenAI
-export OPENAI_API_KEY=your-api-key
+# Option 2: Set environment variables
+export ANTHROPIC_API_KEY=your-api-key  # Anthropic (Claude)
+export OPENAI_API_KEY=your-api-key     # Or OpenAI
 
-# Or use local models (no API key needed)
+# Option 3: Use local models (no API key needed)
 ollama pull llama3
 cluster-code config provider add ollama
 ```
