@@ -55,6 +55,36 @@
         "skill structure"
       ],
       "priority": 20
+    },
+    {
+      "name": "osgrep-skill",
+      "description": "Semantic code search using osgrep for natural-language queries and code analysis",
+      "pathPatterns": [
+        "src/**/*.ts",
+        "src/**/*.js",
+        "plugins/**/*.ts",
+        ".claude/**/*.md"
+      ],
+      "keywords": [
+        "search",
+        "grep",
+        "osgrep",
+        "find",
+        "locate",
+        "search code",
+        "semantic search",
+        "natural language search",
+        "code search",
+        "pattern",
+        "query",
+        "explore",
+        "discover",
+        "analyze",
+        "investigation",
+        "refactor",
+        "review"
+      ],
+      "priority": 15
     }
   ],
   "globalSettings": {
