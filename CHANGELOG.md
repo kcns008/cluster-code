@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0 - Release (2025-12-07)
+
+### Features
+- AI-powered CLI tool for Kubernetes and OpenShift cluster management
+- Interactive chat mode with AI providers (Anthropic, OpenAI, Google)
+- Cluster diagnostics and troubleshooting
+- Complete cloud provider support (AWS EKS/ROSA, Azure AKS/ARO, GCP GKE)
+- GitOps workflows (Helm, Kustomize, ArgoCD, Flux)
+- OpenShift-specific features (routes analysis, operator management)
+- Node lifecycle management (cordon, uncordon, drain)
+- Backup and restore with Velero integration
+- Multi-cluster context management
+- Claude Agent SDK integration for agentic mode
+
+### Changes since 0.1.0
+- Updated dependencies for AI SDK support
+- Added @anthropic-ai/claude-agent-sdk for agent mode
+- Enhanced multi-cloud cluster lifecycle operations
+- Improved documentation and workflows
+
 ## 0.1.0 - Initial Release (2025-11-19)
 
 ### Features
