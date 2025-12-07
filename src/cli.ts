@@ -27,6 +27,7 @@ import {
 import { logger } from './utils/logger';
 import { ConfigManager } from './config';
 import { InteractiveSession } from './interactive';
+import { AgentSession } from './agent';
 
 const program = new Command();
 
@@ -108,6 +109,23 @@ program
   .action(async (options) => {
     try {
       await startInteractiveMode(options);
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+// Agent command (Agent SDK mode - Claude only)
+program
+  .command('agent [message]')
+  .alias('a')
+  .description('Start agentic mode with Claude Agent SDK (Claude-only, autonomous execution)')
+  .option('-a, --auto-execute', 'Automatically execute commands without confirmation')
+  .option('-v, --verbose', 'Show verbose output including tool calls and results')
+  .option('-p, --plan', 'Planning mode - generate plans without executing')
+  .action(async (message, options) => {
+    try {
+      await startAgentMode(message, options);
     } catch (error: any) {
       logger.error(error.message);
       process.exit(1);
@@ -283,6 +301,46 @@ async function startInteractiveMode(options: { autoExecute?: boolean; verbose?: 
 
   await session.initialize();
   await session.start();
+}
+
+// Function to start agent mode (Agent SDK - Claude only)
+async function startAgentMode(
+  message?: string,
+  options: { autoExecute?: boolean; verbose?: boolean; plan?: boolean } = {}
+): Promise<void> {
+  const configManager = new ConfigManager();
+  const config = configManager.getConfig();
+
+  // Check if cluster is configured
+  if (!config.cluster || !config.cluster.context) {
+    logger.warning('Cluster not configured. Please run initialization first.\n');
+    logger.info('Run: ' + chalk.cyan('cluster-code init') + '\n');
+    process.exit(1);
+  }
+
+  // Create agent session
+  const session = new AgentSession({
+    autoExecute: options.autoExecute || false,
+    verbose: options.verbose || false,
+    planMode: options.plan || false,
+  });
+
+  // Check if agent mode is available
+  if (!session.isAvailable()) {
+    logger.error('Agent mode requires Claude API key (ANTHROPIC_API_KEY).\n');
+    logger.info('For agent mode, set: export ANTHROPIC_API_KEY=your-key');
+    logger.info('Or use Bedrock: export CLAUDE_CODE_USE_BEDROCK=1');
+    logger.info('Or use Vertex: export CLAUDE_CODE_USE_VERTEX=1\n');
+    logger.info('For multi-provider mode, use: cluster-code interactive\n');
+    process.exit(1);
+  }
+
+  // If a message was provided, run single query; otherwise start interactive session
+  if (message) {
+    await session.runSingle(message);
+  } else {
+    await session.start();
+  }
 }
 
 // Check if running with no arguments - launch interactive mode
