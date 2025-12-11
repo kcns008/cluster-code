@@ -1,16 +1,19 @@
 ---
 name: k8s-troubleshooting
 description: |
-  Interpret and troubleshoot Kubernetes and OpenShift cluster events, logs, and errors. Use this skill when:
-  (1) Analyzing pod/container logs for errors or issues
-  (2) Interpreting cluster events (kubectl get events)
-  (3) Debugging pod failures: CrashLoopBackOff, ImagePullBackOff, OOMKilled, etc.
-  (4) Diagnosing networking issues: DNS, Service connectivity, Ingress/Route problems
-  (5) Investigating storage issues: PVC pending, mount failures
-  (6) Analyzing node problems: NotReady, resource pressure, taints
-  (7) Troubleshooting OCP-specific issues: SCCs, Routes, Operators, Builds
-  (8) Performance analysis and resource optimization
-  (9) Cluster health assessment and capacity planning
+  Comprehensive Kubernetes and OpenShift cluster health analysis and troubleshooting based on Popeye's issue detection patterns. Use this skill when:
+  (1) Proactive cluster health assessment and security analysis
+  (2) Analyzing pod/container logs for errors or issues
+  (3) Interpreting cluster events (kubectl get events)
+  (4) Debugging pod failures: CrashLoopBackOff, ImagePullBackOff, OOMKilled, etc.
+  (5) Diagnosing networking issues: DNS, Service connectivity, Ingress/Route problems
+  (6) Investigating storage issues: PVC pending, mount failures
+  (7) Analyzing node problems: NotReady, resource pressure, taints
+  (8) Troubleshooting OCP-specific issues: SCCs, Routes, Operators, Builds
+  (9) Performance analysis and resource optimization
+  (10) Security vulnerability assessment and RBAC validation
+  (11) Configuration best practices validation
+  (12) Reliability and high availability analysis
 ---
 
 # Kubernetes / OpenShift Troubleshooting Guide
@@ -24,6 +27,170 @@ description: |
 The agent will automatically detect the cluster type and use the appropriate command.
 
 Systematic approach to diagnosing and resolving cluster issues through event analysis, log interpretation, and root cause identification.
+
+## Proactive Cluster Health Analysis (Popeye-Style)
+
+### Cluster Scoring Framework
+
+Popeye uses a health scoring system (0-100) to assess cluster health. Critical issues reduce the score significantly:
+
+- **BOOM (Critical)**: -50 points - Security vulnerabilities, resource exhaustion, failed services
+- **WARN (Warning)**: -20 points - Configuration inefficiencies, best practice violations
+- **INFO (Informational)**: -5 points - Non-critical issues, optimization opportunities
+
+### Quick Cluster Health Assessment
+
+```bash
+#!/bin/bash
+# Comprehensive cluster health check based on Popeye patterns
+echo "=== POPEYE-STYLE CLUSTER HEALTH ASSESSMENT ==="
+
+# 1. Node Health Check
+echo "### NODE HEALTH (Critical Weight: 1.0) ###"
+kubectl get nodes -o wide | grep -E "NotReady|Unknown" && echo "BOOM: Unhealthy nodes detected!" || echo "✓ All nodes healthy"
+
+# 2. Pod Issues Check
+echo -e "\n### POD HEALTH (Critical Weight: 1.0) ###"
+POD_ISSUES=$(kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded --no-headers | wc -l)
+if [ $POD_ISSUES -gt 0 ]; then
+    echo "WARN: $POD_ISSUES pods not running"
+    kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
+else
+    echo "✓ All pods running"
+fi
+
+# 3. Security Issues Check
+echo -e "\n### SECURITY ASSESSMENT (Critical Weight: 1.0) ###"
+# Check for privileged containers
+PRIVILEGED=$(kubectl get pods -A -o json | jq -r '.items[] | select(.spec.containers[].securityContext.privileged == true) | "\(.metadata.namespace)/\(.metadata.name)"' | wc -l)
+if [ $PRIVILEGED -gt 0 ]; then
+    echo "BOOM: $PRIVILEGED privileged containers detected (Security Risk!)"
+else
+    echo "✓ No privileged containers found"
+fi
+
+# Check for containers running as root
+ROOT_CONTAINERS=$(kubectl get pods -A -o json | jq -r '.items[] | select(.spec.containers[].securityContext.runAsUser == 0) | "\(.metadata.namespace)/\(.metadata.name)"' | wc -l)
+if [ $ROOT_CONTAINERS -gt 0 ]; then
+    echo "WARN: $ROOT_CONTAINERS containers running as root"
+else
+    echo "✓ No containers running as root"
+fi
+
+# 4. Resource Configuration Check
+echo -e "\n### RESOURCE CONFIGURATION (Warning Weight: 0.8) ###"
+NO_LIMITS=$(kubectl get pods -A -o json | jq -r '.items[] | select(.spec.containers[].resources.limits == null) | "\(.metadata.namespace)/\(.metadata.name)"' | wc -l)
+if [ $NO_LIMITS -gt 0 ]; then
+    echo "WARN: $NO_LIMITS containers without resource limits"
+else
+    echo "✓ All containers have resource limits"
+fi
+
+# 5. Storage Issues Check
+echo -e "\n### STORAGE HEALTH (Warning Weight: 0.5) ###"
+PENDING_PVC=$(kubectl get pvc -A --field-selector=status.phase!=Bound --no-headers | wc -l)
+if [ $PENDING_PVC -gt 0 ]; then
+    echo "WARN: $PENDING_PVC PVCs not bound"
+    kubectl get pvc -A --field-selector=status.phase!=Bound
+else
+    echo "✓ All PVCs bound"
+fi
+
+# 6. Network Issues Check
+echo -e "\n### NETWORKING (Warning Weight: 0.5) ###"
+# Check services without endpoints
+EMPTY_ENDPOINTS=$(kubectl get svc -A -o json | jq -r '.items[] | select(.spec.clusterIP != "None") | select(.status.loadBalancer.ingress == null) | "\(.metadata.namespace)/\(.metadata.name)"' | wc -l)
+if [ $EMPTY_ENDPOINTS -gt 0 ]; then
+    echo "WARN: $EMPTY_ENDPOINTS services may have endpoint issues"
+else
+    echo "✓ Services appear healthy"
+fi
+
+# OpenShift specific checks
+if command -v oc &> /dev/null; then
+    echo -e "\n### OPENSHIFT CLUSTER OPERATORS (Critical Weight: 1.0) ###"
+    DEGRADED=$(oc get clusteroperators --no-headers | grep -c -E "False.*True|False.*False")
+    if [ $DEGRADED -gt 0 ]; then
+        echo "BOOM: $DEGRADED cluster operators degraded/unavailable"
+        oc get clusteroperators | grep -E "False.*True|False.*False"
+    else
+        echo "✓ All cluster operators healthy"
+    fi
+fi
+```
+
+### Security Vulnerability Detection
+
+#### Container Security Analysis
+```bash
+# Security Context Validation
+echo "=== CONTAINER SECURITY ANALYSIS ==="
+
+# 1. Privileged Containers (Critical)
+kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\t"}{range .spec.containers[*]}{.name}{"\t"}{.securityContext.privileged}{"\n"}{end}{end}' | grep "true" && echo "BOOM: Privileged containers found!" || echo "✓ No privileged containers"
+
+# 2. Host Namespace Access (Critical)
+kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\t"}{.spec.hostNetwork}{"\t"}{.spec.hostPID}{"\t"}{.spec.hostIPC}{"\n"}' | grep -E "true.*true|true$|true\s" && echo "BOOM: Host namespace access detected!" || echo "✓ No host namespace access"
+
+# 3. Capabilities Check (Warning)
+kubectl get pods -A -o json | jq -r '.items[] | select(.spec.containers[].securityContext.capabilities.add != null) | "\(.metadata.namespace)/\(.metadata.name): \(.spec.containers[].securityContext.capabilities.add[])"'
+
+# 4. Read-Only Root Filesystem (Warning)
+READONLY_ISSUES=$(kubectl get pods -A -o json | jq -r '.items[] | select(.spec.containers[].securityContext.readOnlyRootFilesystem == false) | "\(.metadata.namespace)/\(.metadata.name)"' | wc -l)
+echo "INFO: $READONLY_ISSUES containers without read-only root filesystem"
+```
+
+#### RBAC Security Analysis
+```bash
+echo "=== RBAC SECURITY ANALYSIS ==="
+
+# Check for overly permissive roles
+kubectl get clusterroles -o json | jq -r '.items[] | select(.rules[].verbs[] == "*") | "\(.metadata.name): Wildcard permissions detected"'
+
+# Check service account permissions
+kubectl get serviceaccounts -A -o json | jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name)"'
+```
+
+### Performance Issues Detection
+
+#### Resource Utilization Analysis
+```bash
+echo "=== PERFORMANCE ANALYSIS ==="
+
+# Find pods approaching memory limits
+kubectl top pods -A --no-headers | awk '{print $4}' | sed 's/Mi//' | while read mem; do
+    if [ "$mem" -gt 900 ]; then
+        echo "WARN: Pod using high memory: ${mem}Mi"
+    fi
+done
+
+# CPU throttling detection
+kubectl top pods -A --no-headers | awk '{print $3}' | sed 's/m//' | while read cpu; do
+    if [ "$cpu" -gt 900 ]; then
+        echo "WARN: Pod using high CPU: ${cpu}m"
+    fi
+done
+```
+
+### Configuration Best Practices Validation
+
+#### Deployment Health Checks
+```bash
+echo "=== DEPLOYMENT BEST PRACTICES ==="
+
+# Check for liveness/readiness probes
+NO_PROBES=$(kubectl get deployments -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[].livenessProbe == null or .spec.template.spec.containers[].readinessProbe == null) | "\(.metadata.namespace)/\(.metadata.name)"' | wc -l)
+echo "INFO: $NO_PROBES deployments missing health probes"
+
+# Check for pod disruption budgets
+PDB_COUNT=$(kubectl get pdb -A --no-headers | wc -l)
+DEPLOY_COUNT=$(kubectl get deployments -A --no-headers | wc -l)
+echo "INFO: $PDB_COUNT pod disruption budgets for $DEPLOY_COUNT deployments"
+
+# Rolling update strategy
+NO_STRATEGY=$(kubectl get deployments -A -o json | jq -r '.items[] | select(.spec.strategy.type != "RollingUpdate") | "\(.metadata.namespace)/\(.metadata.name)"' | wc -l)
+echo "INFO: $NO_STRATEGY deployments not using RollingUpdate"
+```
 
 ## Troubleshooting Workflow
 
@@ -454,6 +621,81 @@ conntrack -L | grep ${POD_IP}
 
 ## OpenShift-Specific Troubleshooting
 
+### Comprehensive OpenShift Health Assessment (Popeye-Style)
+
+```bash
+#!/bin/bash
+# OpenShift comprehensive health check
+echo "=== OPENSHIFT COMPREHENSIVE HEALTH ASSESSMENT ==="
+
+# 1. Cluster Operators Health (Critical)
+echo "### CLUSTER OPERATORS (Critical Weight: 1.0) ###"
+oc get clusteroperators
+echo ""
+DEGRADED_OPERATORS=$(oc get clusteroperators --no-headers | grep -c -E "False.*True|False.*False")
+if [ $DEGRADED_OPERATORS -gt 0 ]; then
+    echo "BOOM: $DEGRADED_OPERATORS cluster operators in degraded state!"
+    oc get clusteroperators | grep -E "False.*True|False.*False"
+else
+    echo "✓ All cluster operators healthy"
+fi
+
+# 2. OpenShift Routes Analysis (Warning)
+echo -e "\n### ROUTES ANALYSIS (Warning Weight: 0.5) ###"
+ROUTE_ISSUES=$(oc get routes -A -o json | jq -r '.items[] | select(.status.ingress == null) | "\(.metadata.namespace)/\(.metadata.name)"' | wc -l)
+if [ $ROUTE_ISSUES -gt 0 ]; then
+    echo "WARN: $ROUTE_ISSUES routes without endpoints"
+else
+    echo "✓ All routes have endpoints"
+fi
+
+# Check TLS certificate issues
+EXPIRED_CERTS=$(oc get routes -A -o json | jq -r '.items[] | select(.spec.tls != null) | select(.status.ingress[].conditions[]?.type == "Admitted" and .status.ingress[].conditions[]?.status == "False") | "\(.metadata.namespace)/\(.metadata.name)"' | wc -l)
+if [ $EXPIRED_CERTS -gt 0 ]; then
+    echo "WARN: $EXPIRED_CERTS routes with TLS issues"
+fi
+
+# 3. BuildConfig Health Analysis (Warning)
+echo -e "\n### BUILDCONFIG ANALYSIS (Warning Weight: 0.5) ###"
+FAILED_BUILDS=$(oc get builds -A --field-selector=status.phase!=Failed --no-headers | wc -l)
+echo "INFO: $FAILED_BUILDS failed builds detected"
+
+# Check BuildConfig strategies
+BUILDCONFIGS=$(oc get buildconfigs -A --no-headers | wc -l)
+echo "INFO: $BUILDCONFIGS build configurations found"
+
+# 4. Security Context Constraints (Critical)
+echo -e "\n### SCC ANALYSIS (Critical Weight: 1.0) ###"
+SCC_VIOLATIONS=$(oc get events -A --field-selector=reason=FailedScheduling --no-headers | grep -c "unable to validate against any security context constraint")
+if [ $SCC_VIOLATIONS -gt 0 ]; then
+    echo "BOOM: $SCC_VIOLATIONS SCC violations detected!"
+    oc get events -A --field-selector=reason=FailedScheduling | grep "unable to validate against any security context constraint"
+else
+    echo "✓ No SCC violations detected"
+fi
+
+# 5. ImageStream Health (Warning)
+echo -e "\n### IMAGESTREAM ANALYSIS (Warning Weight: 0.3) ###"
+STALE_IMAGES=$(oc get imagestreams -A -o json | jq -r '.items[] | select(.status.tags[]?.items? | length == 0) | "\(.metadata.namespace)/\(.metadata.name)"' | wc -l)
+if [ $STALE_IMAGES -gt 0 ]; then
+    echo "WARN: $STALE_IMAGES ImageStreams without images"
+else
+    echo "✓ All ImageStreams have images"
+fi
+
+# 6. Project Resource Quotas (Warning)
+echo -e "\n### PROJECT QUOTAS (Warning Weight: 0.5) ###"
+oc get projects -A -o json | jq -r '.items[] | "\(.metadata.name): \(.status.phase)"' | while read project_info; do
+    project=$(echo $project_info | cut -d: -f1)
+    phase=$(echo $project_info | cut -d: -f2)
+    if [ "$phase" == "Active" ]; then
+        echo "✓ Project $project is active"
+    else
+        echo "WARN: Project $project is $phase"
+    fi
+done
+```
+
 ### Cluster Operators
 
 ```bash
@@ -465,6 +707,9 @@ oc describe clusteroperator ${OPERATOR}
 
 # Check operator logs
 oc logs -n openshift-${OPERATOR} -l name=${OPERATOR}-operator
+
+# OpenShift-specific: Check co-reconcile events
+oc get events -A --field-selector reason=OperatorStatusChanged
 ```
 
 ### Security Context Constraints (SCC)
@@ -585,45 +830,278 @@ kubectl run nettest --image=nicolaka/netshoot --rm -it --restart=Never -- \
   curl -w "@curl-format.txt" -o /dev/null -s http://${SERVICE}:${PORT}
 ```
 
-## Diagnostic Decision Trees
+## Popeye-Style Diagnostic Decision Trees
 
-### Pod Not Starting
-
-```
-Pod stuck in Pending?
-├── Yes → Check Events
-│   ├── "FailedScheduling" → Check node resources, taints, affinity
-│   ├── "no persistent volumes available" → Create PV or check StorageClass
-│   └── No events → Check namespace quotas, kube-scheduler
-└── No → Pod stuck in ContainerCreating?
-    ├── Yes → Check Events
-    │   ├── "ImagePullBackOff" → Check image name, registry, secrets
-    │   ├── "FailedMount" → Check PVC, secrets, configmaps
-    │   └── "NetworkNotReady" → Check CNI plugin
-    └── No → Pod in CrashLoopBackOff?
-        ├── Yes → Check logs --previous
-        │   ├── Exit code 137 → OOMKilled, increase memory
-        │   ├── Exit code 1 → Application error, fix code
-        │   └── No logs → Entrypoint/command issue
-        └── No → Check container status for specific error
-```
-
-### Application Not Reachable
+### Comprehensive Cluster Health Assessment Tree
 
 ```
-Can reach Service ClusterIP?
-├── No → Check Service selector matches pod labels
-│   ├── Endpoints empty → Fix selector or check pod health
-│   └── Endpoints exist → Check NetworkPolicy blocking traffic
-└── Yes → Can reach via Ingress/Route?
-    ├── No → Check Ingress/Route config
-    │   ├── Ingress controller running? → Check controller pods
-    │   ├── TLS certificate valid? → Check cert-manager/secrets
-    │   └── Host header correct? → Test with curl -H "Host: xxx"
-    └── Yes → Application returning errors?
-        ├── 502/503/504 → Backend not ready, check pods
-        ├── 404 → Path routing issue
-        └── 5xx → Application error, check logs
+Cluster Health Score < 80?
+├── Yes → Check Critical Issues (BOOM: -50 points each)
+│   ├── Node Health Issues?
+│   │   ├── NotReady nodes → kubelet problems, resource pressure
+│   │   ├── Unknown nodes → Network connectivity, API server
+│   │   └── Resource pressure → CPU/Memory/Disk pressure
+│   ├── Security Vulnerabilities?
+│   │   ├── Privileged containers → Remove privileged flag
+│   │   ├── Host namespace access → Remove hostNetwork/hostPID/hostIPC
+│   │   ├── Run as root → Set runAsNonRoot: true, runAsUser > 0
+│   │   └── Wildcard RBAC → Create specific roles with minimal permissions
+│   ├── Service Failures?
+│   │   ├── No endpoints → Fix service selector or pod labels
+│   │   ├── Failed load balancers → Check cloud provider quotas
+│   │   └── Certificate issues → Renew TLS certificates
+│   └── Resource Exhaustion?
+│       ├── OOMKilled pods → Increase memory limits
+│       ├── CPU throttling → Increase CPU limits
+│       └── Storage full → Clean up or expand storage
+├── No → Check Warning Issues (WARN: -20 points each)
+│   ├── Configuration Issues?
+│   │   ├── No resource limits → Add requests/limits
+│   │   ├── No health probes → Add liveness/readiness probes
+│   │   ├── Missing PDBs → Create PodDisruptionBudgets
+│   │   └── No rolling updates → Use RollingUpdate strategy
+│   ├── Performance Issues?
+│   │   ├── Underutilized resources → Right-size pods
+│   │   ├── Large container images → Optimize Dockerfile
+│   │   └── Inefficient scheduling → Add affinity/anti-affinity
+│   └── Reliability Issues?
+│       ├── Single replicas → Increase replica count
+│       ├── No backup strategy → Implement backup solution
+│       └── Missing monitoring → Add metrics and logging
+└── Score >= 80 → Check Info Issues (INFO: -5 points each)
+    ├── Best Practice Violations?
+    │   ├── Missing labels → Add standard labels
+    │   ├── No termination grace → Set terminationGracePeriodSeconds
+    │   └── Deprecated APIs → Update to newer API versions
+    └── Optimization Opportunities?
+        ├── Unused resources → Clean up orphaned resources
+        ├── ImagePullPolicy: Always → Use IfNotPresent for production
+        └── Large logs → Implement log rotation
+```
+
+### Pod Not Starting - Enhanced Diagnostic Tree
+
+```
+Pod Phase = Pending?
+├── Yes → Check Scheduling Issues
+│   ├── Events: FailedScheduling?
+│   │   ├── "Insufficient cpu/memory" →
+│   │   │   ├── Add nodes OR
+│   │   │   ├── Reduce resource requests OR
+│   │   │   └── Enable cluster autoscaler
+│   │   ├── "node(s) had taint" →
+│   │   │   ├── Add toleration to pod OR
+│   │   │   └── Remove taint from node
+│   │   ├── "node(s) didn't match nodeSelector" →
+│   │   │   ├── Fix nodeSelector labels OR
+│   │   │   └── Update node labels
+│   │   ├── "persistentvolumeclaim not found" →
+│   │   │   ├── Create PVC with correct name OR
+│   │   │   └── Fix PVC reference in pod
+│   │   └── "0/X nodes available" → Check all nodes for issues
+│   └── No FailedScheduling events?
+│       ├── Check ResourceQuota → Quota exceeded?
+│       ├── Check LimitRange → Requests too small/large?
+│       └── Check Namespace → Namespace exists and not terminating?
+└── No → Pod Phase = Running with issues?
+    ├── ContainerCreating > 5min?
+    │   ├── Events: ImagePullBackOff?
+    │   │   ├── Check image name/registry → Fix image reference
+    │   │   ├── Check ImagePullSecrets → Create/update secrets
+    │   │   └── Test registry access → kubectl run test-pod --image=xxx
+    │   ├── Events: FailedMount?
+    │   │   ├── PVC not bound → Create PV or fix StorageClass
+    │   │   ├── Secret/ConfigMap not found → Create missing resources
+    │   │   └── Permission denied → Fix securityContext, fsgroup
+    │   └── Events: CreateContainerConfigError?
+    │       ├── Missing ConfigMap → Create ConfigMap
+    │       ├── Invalid volume mount → Fix volumeMount path
+    │       └── Security context violation → Adjust SCC or securityContext
+    └── Container status: Waiting/CrashLoopBackOff?
+        ├── Exit code analysis:
+        │   ├── 137 (OOMKilled) → Increase memory limit
+        │   ├── 1 (General error) → Check application logs
+        │   ├── 125/126/127 (Command issues) → Fix entrypoint/command
+        │   └── 143 (SIGTERM) → Graceful shutdown issue
+        └── No previous logs?
+            ├── Application starts too slowly → Add startupProbe
+            ├── Entrypoint command not found → Fix Dockerfile CMD/ENTRYPOINT
+            └── Permission denied → Fix file permissions in image
+```
+
+### Security Issues Diagnostic Tree
+
+```
+Security Issues Detected?
+├── Privileged Containers (Critical)?
+│   ├── Find: kubectl get pods -A -o json | jq 'select(.spec.containers[].securityContext.privileged == true)'
+│   ├── Why: Dangerous escape from container isolation
+│   └── Fix: Set privileged: false or use least privileged SCC
+├── Host Namespace Access (Critical)?
+│   ├── Check: hostNetwork, hostPID, hostIPC = true
+│   ├── Why: Access to host system resources
+│   └── Fix: Remove host namespace access, use specific alternatives
+├── Root User Execution (Warning)?
+│   ├── Check: runAsUser = 0 or no runAsNonRoot
+│   ├── Why: Root access in container
+│   └── Fix: Set runAsNonRoot: true, runAsUser: 1000+
+├── Wildcard RBAC Permissions (Critical)?
+│   ├── Check: verbs: ["*"] or resources: ["*"]
+│   ├── Why: Over-privileged service accounts
+│   └── Fix: Create specific roles with minimal permissions
+├── Missing Security Context (Warning)?
+│   ├── Check: No securityContext at pod or container level
+│   ├── Why: Default settings may not be secure enough
+│   └── Fix: Add securityContext with appropriate settings
+└── Sensitive Data in Environment Variables (Critical)?
+    ├── Check: Passwords, tokens, keys in env
+    ├── Why: Visible via kubectl describe, logs
+    └── Fix: Use Secrets, consider external secret management
+```
+
+### Performance Issues Diagnostic Tree
+
+```
+Performance Issues Detected?
+├── Resource Utilization Issues?
+│   ├── High CPU Usage?
+│   │   ├── Symptoms: High latency, throttling
+│   │   ├── Diagnose: kubectl top pods, kubectl describe node
+│   │   └── Solutions: Increase limits, optimize code, add replicas
+│   ├── Memory Pressure?
+│   │   ├── Symptoms: OOMKilled, swapping, slow performance
+│   │   ├── Diagnose: kubectl top pods, check events for OOM
+│   │   └── Solutions: Increase limits, fix memory leaks, add nodes
+│   └── Storage Issues?
+│       ├── Symptoms: Failed writes, slow I/O, PVC pending
+│       ├── Diagnose: kubectl get pv/pvc, df -h on nodes
+│       └── Solutions: Expand PVs, add storage, optimize I/O patterns
+├── Networking Performance?
+│   ├── DNS Resolution Delays?
+│   │   ├── Check: CoreDNS pods, node DNS config
+│   │   ├── Test: nslookup from debug pod
+│   │   └── Fix: Scale CoreDNS, optimize DNS config
+│   ├── Service Connectivity Issues?
+│   │   ├── Check: Service endpoints, NetworkPolicies
+│   │   ├── Test: curl to service.cluster.local
+│   │   └── Fix: Fix selectors, adjust NetworkPolicies
+│   └── Ingress/Route Performance?
+│       ├── Check: Ingress controller resources, TLS config
+│       ├── Test: Load test with hey/wrk
+│       └── Fix: Scale ingress, optimize TLS, add caching
+└── Application-Specific Issues?
+    ├── Slow Startup Times?
+    │   ├── Check: Image size, initialization steps
+    │   ├── Fix: Multi-stage builds, optimize startup
+    │   └── Configure: startupProbe with appropriate values
+    ├── Database Connection Pool Issues?
+    │   ├── Check: Connection limits, timeout settings
+    │   ├── Monitor: Active connections, wait time
+    │   └── Fix: Adjust pool size, add connection retry logic
+    └── Cache Inefficiency?
+        ├── Check: Hit ratios, cache size
+        ├── Monitor: Memory usage, eviction rates
+        └── Fix: Optimize cache strategy, add external cache
+```
+
+### OpenShift-Specific Issues Tree
+
+```
+OpenShift Issues Detected?
+├── Cluster Operator Degraded?
+│   ├── Check: oc get clusteroperators
+│   ├── Investigate: oc describe clusteroperator <name>
+│   ├── Logs: oc logs -n openshift-<operator>
+│   └── Common fixes:
+│       ├── authentication/oauth → Check cert rotation
+│       ├── ingress → Check router pods, certificates
+│       ├── storage → Check storage class, provisioner
+│       └── network → Check CNI configuration
+├── SCC Violations?
+│   ├── Check: Events for "unable to validate against any security context constraint"
+│   ├── Diagnose: oc get scc, oc adm policy who-can use scc
+│   └── Fix:
+│       ├── Grant appropriate SCC to service account
+│       ├── Adjust pod securityContext to match SCC
+│       └── Create custom SCC for specific needs
+├── BuildConfig Failures?
+│   ├── Check: oc get builds, oc logs build/<build-name>
+│   ├── Common issues:
+│       │   ├── Source code access → Git credentials, webhook
+│       │   ├── Base image not found → ImageStream, registry
+│       │   ├── Build timeouts → Increase timeout, optimize build
+│       │   └── Registry push failures → Permissions, quotas
+│   └── Fix: Address specific build error, retry build
+├── Route Issues?
+│   ├── Check: oc get routes, oc describe route <name>
+│   ├── Common issues:
+│       │   ├── No endpoints → Service selector, pod health
+│       │   ├── TLS certificate expired → Renew cert
+│       │   ├── Wrong host/path → Update route spec
+│       │   └── Router not responding → Check router pods
+│   └── Fix: Fix underlying service or update route config
+└── ImageStream Issues?
+    ├── Check: oc get imagestreams, oc describe is <name>
+    ├── Common issues:
+    │   ├── No tags/images → Trigger import, fix image reference
+    │   ├── Import failures → Registry access, credentials
+    │   └── Tag not found → Fix tag reference, re-tag image
+    └── Fix: Re-import image, fix registry connection
+```
+
+### Application Not Reachable - Enhanced Tree
+
+```
+Application Connectivity Issue?
+├── Service Level Issues?
+│   ├── Service has no endpoints?
+│   │   ├── Check: kubectl get endpoints <service>
+│   │   ├── Verify: Service selector matches pod labels
+│   │   ├── Check: Pod health and readiness
+│   │   └── Fix: Update selector or fix pod issues
+│   ├── Service wrong type?
+│   │   ├── ClusterIP but expecting external → Use LoadBalancer/NodePort
+│   │   ├── LoadBalancer not getting IP → Check cloud provider
+│   │   └── NodePort not accessible → Check firewall, node ports
+│   └── Service port wrong?
+│       ├── Check: targetPort vs containerPort
+│       ├── Verify: Protocol (TCP/UDP) matches
+│       └── Fix: Update service port configuration
+├── Ingress/Route Issues?
+│   ├── Ingress not found or misconfigured?
+│   │   ├── Check: kubectl get ingress, describe ingress
+│   │   ├── Verify: Host, path, backend service
+│   │   └── Fix: Update ingress configuration
+│   ├── TLS Certificate Issues?
+│   │   ├── Check: Certificate expiration, validity
+│       ├── Verify: Secret exists and contains cert/key
+│       │   └── Fix: Renew certificate, update secret
+│   ├── Ingress Controller Issues?
+│   │   ├── Check: Controller pod health
+│       ├── Verify: Controller service endpoints
+│       │   └── Fix: Restart controller, fix configuration
+│   └── Route-specific (OpenShift)?
+│       ├── Check: oc get routes, describe route
+│       ├── Verify: Router health, certificates
+│       └── Fix: Update route, check router pods
+├── NetworkPolicy Blocking?
+│   ├── Check: kubectl get networkpolicy
+│   ├── Verify: Policy allows traffic flow
+│   ├── Test: Temporarily disable policy for debugging
+│   └── Fix: Add appropriate ingress/egress rules
+└── Application Level Issues?
+    ├── Application not binding to right port?
+    │   ├── Check: Listen address (0.0.0.0 vs 127.0.0.1)
+    │   ├── Verify: Port number matches containerPort
+    │   └── Fix: Update application bind configuration
+    ├── Health check failures?
+    │   ├── Check: Liveness/readiness probe paths
+    │   ├── Verify: Application responds to probes
+    │   └── Fix: Update probe configuration or application
+    └── Application errors?
+        ├── Check: Application logs for errors
+        ├── Verify: Database connections, dependencies
+        └── Fix: Address application-specific issues
 ```
 
 ## Health Check Scripts
