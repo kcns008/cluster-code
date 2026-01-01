@@ -227,3 +227,111 @@ export async function isClusterReachable(options: KubectlOptions = {}): Promise<
     return false;
   }
 }
+
+/**
+ * Get nodes in cluster
+ */
+export async function getNodes(options: KubectlOptions = {}): Promise<any[]> {
+  const output = await kubectl('get nodes -o json', options);
+  const data = JSON.parse(output);
+  return data.items || [];
+}
+
+/**
+ * Get deployments in namespace
+ */
+export async function getDeployments(options: KubectlOptions = {}): Promise<any[]> {
+  const output = await kubectl('get deployments -o json', options);
+  const data = JSON.parse(output);
+  return data.items || [];
+}
+
+/**
+ * Get services in namespace
+ */
+export async function getServices(options: KubectlOptions = {}): Promise<any[]> {
+  const output = await kubectl('get services -o json', options);
+  const data = JSON.parse(output);
+  return data.items || [];
+}
+
+/**
+ * Get current cluster context info
+ */
+export async function getClusterContextInfo(options: KubectlOptions = {}): Promise<{
+  context: string;
+  cluster: string;
+  user: string;
+}> {
+  try {
+    const configOutput = await kubectl('config view --minify -o json', options);
+    const config = JSON.parse(configOutput);
+
+    const context = config.contexts?.[0]?.name || 'unknown';
+    const cluster = config.contexts?.[0]?.context?.cluster || 'unknown';
+    const user = config.contexts?.[0]?.context?.user || 'unknown';
+
+    return { context, cluster, user };
+  } catch {
+    return { context: 'unknown', cluster: 'unknown', user: 'unknown' };
+  }
+}
+
+/**
+ * Get Kubernetes cluster version
+ */
+export async function getKubeVersion(options: KubectlOptions = {}): Promise<{
+  clientVersion: string;
+  serverVersion: string;
+}> {
+  try {
+    const output = await kubectl('version -o json', options);
+    const data = JSON.parse(output);
+
+    const clientVersion = data.clientVersion?.gitVersion || 'unknown';
+    const serverVersion = data.serverVersion?.gitVersion || 'unknown';
+
+    return { clientVersion, serverVersion };
+  } catch {
+    return { clientVersion: 'unknown', serverVersion: 'unknown' };
+  }
+}
+
+/**
+ * Get node metrics (CPU/Memory) if metrics-server is available
+ */
+export async function getNodeMetrics(options: KubectlOptions = {}): Promise<Map<string, { cpu: string; memory: string }>> {
+  const metricsMap = new Map<string, { cpu: string; memory: string }>();
+
+  try {
+    const output = await kubectl('top nodes --no-headers', options);
+    const lines = output.split('\n').filter(Boolean);
+
+    for (const line of lines) {
+      const parts = line.split(/\s+/);
+      if (parts.length >= 5) {
+        const name = parts[0];
+        const cpu = parts[2]; // CPU%
+        const memory = parts[4]; // MEM%
+        metricsMap.set(name, { cpu, memory });
+      }
+    }
+  } catch {
+    // Metrics server might not be available
+  }
+
+  return metricsMap;
+}
+
+/**
+ * Get events (for error detection)
+ */
+export async function getEvents(options: KubectlOptions = {}): Promise<any[]> {
+  try {
+    const output = await kubectl('get events -o json --field-selector type!=Normal', options);
+    const data = JSON.parse(output);
+    return data.items || [];
+  } catch {
+    return [];
+  }
+}

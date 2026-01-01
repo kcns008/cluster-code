@@ -46,6 +46,7 @@ That's it! Start chatting with your cluster in plain English.
 - 🚀 **GitOps Ready** - Helm, Kustomize, ArgoCD, Flux integration
 - 🔒 **Local LLM Support** - Use Ollama for complete data privacy
 - 🎯 **OpenShift Native** - Routes, Operators, BuildConfigs support
+- 🤖 **RL-Based Management** - Optional PufferLib integration for training AI agents
 
 ## 📚 Documentation
 
@@ -54,6 +55,7 @@ That's it! Start chatting with your cluster in plain English.
 - [Installation Guide](https://kcns008.github.io/cluster-code/guides/installation) - Detailed setup instructions
 - [LLM Provider Setup](https://kcns008.github.io/cluster-code/guides/llm-providers) - Configure Anthropic, OpenAI, Google, or local models
 - [Getting Started](https://kcns008.github.io/cluster-code/guides/getting-started) - First steps and tutorials
+- [PufferLib RL Guide](./docs/guides/pufferlib-rl.md) - Reinforcement learning for cluster management
 - [API Reference](https://kcns008.github.io/cluster-code/api/commands) - Complete command reference
 
 ## 💡 Usage Examples
@@ -83,6 +85,23 @@ cluster-code helm-deploy --chart ./my-chart --release my-app
 # Create cloud cluster
 cluster-code azure-cluster-create --type aks --name prod-aks
 ```
+
+### Reinforcement Learning (Optional)
+
+Train AI agents to automatically manage your cluster using PufferLib:
+
+```bash
+# Set up RL environment (optional during init)
+cluster-code rl setup
+
+# Train an agent
+cluster-code rl train --episodes 500
+
+# Run RL-based diagnostics
+cluster-code rl diagnose
+```
+
+See the [PufferLib RL Guide](./docs/guides/pufferlib-rl.md) for details.
 
 ## 🔌 Plugin Architecture
 

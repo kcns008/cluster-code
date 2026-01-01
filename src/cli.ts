@@ -23,11 +23,18 @@ import {
   providerShowCommand,
   infoCommand,
   infoHelpInstallCommand,
+  rlStatusCommand,
+  rlSetupCommand,
+  rlRemoveCommand,
+  rlTrainCommand,
+  rlDiagnoseCommand,
 } from './commands';
 import { logger } from './utils/logger';
 import { ConfigManager } from './config';
 import { InteractiveSession } from './interactive';
 import { AgentSession } from './agent';
+
+import { startTui } from './tui';
 
 const program = new Command();
 
@@ -126,6 +133,19 @@ program
   .action(async (message, options) => {
     try {
       await startAgentMode(message, options);
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+// UI Command
+program
+  .command('ui')
+  .description('Start TUI mode')
+  .action(async () => {
+    try {
+      await startTui();
     } catch (error: any) {
       logger.error(error.message);
       process.exit(1);
@@ -246,6 +266,89 @@ providerCmd
   .action(async () => {
     try {
       await providerShowCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+// RL (Reinforcement Learning) commands - PufferLib integration
+const rlCmd = program
+  .command('rl')
+  .description('Manage PufferLib RL environment for intelligent cluster management');
+
+rlCmd
+  .command('status')
+  .description('Show RL environment status')
+  .action(async () => {
+    try {
+      await rlStatusCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+rlCmd
+  .command('setup')
+  .description('Set up PufferLib RL environment')
+  .option('--cuda', 'Install with CUDA/GPU support')
+  .option('--force', 'Force reinstall if environment exists')
+  .action(async (options) => {
+    try {
+      await rlSetupCommand(options);
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+rlCmd
+  .command('remove')
+  .description('Remove PufferLib RL environment')
+  .action(async () => {
+    try {
+      await rlRemoveCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+rlCmd
+  .command('train')
+  .description('Train an RL agent for cluster management')
+  .option('-e, --episodes <number>', 'Number of training episodes', '100')
+  .option('-s, --steps <number>', 'Steps per episode', '100')
+  .option('--no-simulation', 'Use real cluster instead of simulation')
+  .option('-v, --verbose', 'Show verbose training output')
+  .action(async (options) => {
+    try {
+      await rlTrainCommand({
+        episodes: parseInt(options.episodes),
+        steps: parseInt(options.steps),
+        simulation: options.simulation,
+        verbose: options.verbose,
+      });
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+rlCmd
+  .command('diagnose')
+  .description('Run RL agent for cluster diagnostics')
+  .option('-m, --model <path>', 'Path to trained model file')
+  .option('-s, --steps <number>', 'Maximum steps to run', '20')
+  .option('--no-simulation', 'Use real cluster instead of simulation')
+  .action(async (options) => {
+    try {
+      await rlDiagnoseCommand({
+        model: options.model,
+        steps: parseInt(options.steps),
+        simulation: options.simulation,
+      });
     } catch (error: any) {
       logger.error(error.message);
       process.exit(1);

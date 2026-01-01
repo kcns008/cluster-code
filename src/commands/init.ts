@@ -8,6 +8,9 @@ import { logger } from '../utils/logger';
 import { getCurrentContext, getContexts, getNamespaces, isKubectlAvailable, isClusterReachable, resetCLICache } from '../utils/kubectl';
 import { detectCluster, ClusterType, CloudProvider } from '../utils/cluster-detector';
 import { getAllCLIVersions } from '../utils/cli-version-manager';
+import { checkPython, getPufferLibStatus } from '../pufferlib/checker';
+import { setupPufferLib, generatePufferLibConfig } from '../pufferlib/setup';
+import { getDefaultEnvPath } from '../pufferlib/config';
 
 interface InitOptions {
   context?: string;
@@ -350,8 +353,87 @@ export async function initCommand(options: InitOptions): Promise<void> {
     logger.info('  cluster-code diagnose  - Run cluster diagnostics');
     logger.info('  cluster-code chat      - Start legacy chat mode');
     logger.info('  cluster-code --help    - Show all available commands');
+
+    // Offer PufferLib RL environment setup
+    await offerPufferLibSetup();
   } catch (error: any) {
     logger.error(`Initialization failed: ${error.message}`);
     process.exit(1);
+  }
+}
+
+/**
+ * Offer optional PufferLib RL environment setup
+ */
+async function offerPufferLibSetup(): Promise<void> {
+  // Check if already configured
+  const existingConfig = configManager.getConfig().pufferlib;
+  if (existingConfig?.enabled) {
+    return;
+  }
+
+  // Check if Python is available
+  const python = checkPython();
+  if (!python.available) {
+    return; // Silently skip if Python not available
+  }
+
+  logger.newline();
+  logger.section('Advanced: Reinforcement Learning Environment');
+  logger.info('cluster-code supports optional RL-based cluster management using PufferLib.');
+  logger.info('This allows training AI agents to automatically diagnose and manage clusters.');
+  logger.newline();
+
+  const { setupRL } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'setupRL',
+      message: 'Would you like to set up the PufferLib RL environment? (Optional)',
+      default: false,
+    },
+  ]);
+
+  if (!setupRL) {
+    logger.info('You can set up RL environment later using: cluster-code rl setup');
+    return;
+  }
+
+  // Ask about CUDA support
+  const { useCuda } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'useCuda',
+      message: 'Install with CUDA/GPU support? (Requires NVIDIA GPU and drivers)',
+      default: false,
+    },
+  ]);
+
+  logger.newline();
+  logger.info('Setting up PufferLib RL environment...');
+  logger.info('This may take a few minutes to download and install dependencies.');
+  logger.newline();
+
+  const result = await setupPufferLib({
+    withCuda: useCuda,
+    verbose: true,
+  });
+
+  if (result.success) {
+    const pufferConfig = generatePufferLibConfig(result.envPath);
+    configManager.set('pufferlib', pufferConfig);
+
+    logger.newline();
+    logger.success('PufferLib RL environment setup complete!');
+    logger.info('Use these commands to work with RL agents:');
+    logger.info('  cluster-code rl status   - Check RL environment status');
+    logger.info('  cluster-code rl train    - Train an RL agent');
+    logger.info('  cluster-code rl diagnose - Run RL-based diagnostics');
+  } else {
+    logger.newline();
+    logger.warning('RL environment setup failed, but cluster-code is still usable.');
+    logger.info('You can try again later with: cluster-code rl setup');
+    for (const error of result.errors) {
+      logger.error(`  - ${error}`);
+    }
   }
 }

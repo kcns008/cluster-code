@@ -59,14 +59,16 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.60",
     "@ai-sdk/anthropic": "^2.0.41",
     "@ai-sdk/google": "^2.0.28",
     "@ai-sdk/openai": "^2.0.62",
     "@ai-sdk/openai-compatible": "^1.0.26",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.60",
     "@anthropic-ai/sdk": "^0.27.0",
     "ai": "^5.0.87",
     "axios": "^1.6.2",
+    "blessed": "^0.1.81",
+    "blessed-contrib": "^4.11.0",
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.3",
     "commander": "^11.1.0",
@@ -77,6 +79,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/blessed": "^0.1.27",
     "@types/inquirer": "^9.0.7",
     "@types/node": "^20.10.5",
     "@typescript-eslint/eslint-plugin": "^6.15.0",

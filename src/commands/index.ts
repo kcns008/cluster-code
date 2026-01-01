@@ -14,3 +14,10 @@ export {
   providerShowCommand
 } from './provider';
 export { infoCommand, infoHelpInstallCommand } from './info';
+export {
+  rlStatusCommand,
+  rlSetupCommand,
+  rlRemoveCommand,
+  rlTrainCommand,
+  rlDiagnoseCommand,
+} from './rl';

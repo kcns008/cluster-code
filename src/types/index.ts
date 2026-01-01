@@ -81,6 +81,35 @@ export interface LLMConfig {
   temperature?: number;
 }
 
+/**
+ * PufferLib RL Training Configuration
+ */
+export interface RLTrainingConfig {
+  learningRate: number;
+  batchSize: number;
+  numEpochs: number;
+  gamma: number;
+  clipRange: number;
+  valueCoefficient: number;
+  entropyCoefficient: number;
+  maxGradNorm: number;
+  numEnvs: number;
+  numSteps: number;
+  hiddenSize: number;
+  numLayers: number;
+}
+
+/**
+ * PufferLib Configuration for RL-based cluster management
+ */
+export interface PufferLibConfig {
+  enabled: boolean;
+  pythonPath?: string;
+  envPath?: string;
+  modelPath?: string;
+  trainingConfig?: RLTrainingConfig;
+}
+
 export interface ClusterCodeConfig {
   cluster?: ClusterConfig;
   agents?: AgentConfig[];
@@ -89,6 +118,9 @@ export interface ClusterCodeConfig {
   // LLM Configuration
   llm?: LLMConfig;
   providers?: Record<string, ProviderConfig>;
+
+  // PufferLib RL Configuration
+  pufferlib?: PufferLibConfig;
 
   // Legacy support (deprecated)
   anthropicApiKey?: string;

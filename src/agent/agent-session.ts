@@ -15,6 +15,10 @@ export interface AgentSessionOptions extends AgentClientOptions {
      * Show welcome message
      */
     showWelcome?: boolean;
+    /**
+     * Custom logger for TUI integration
+     */
+    logger?: (message: string) => void;
 }
 
 interface ParsedMessage {
@@ -110,6 +114,20 @@ export class AgentSession {
     }
 
     /**
+     * Internal logger that routes to console or custom logger
+     * Removes ANSI codes if custom logger is used (optional, but TUI usually handles its own coloring or expects raw text)
+     * For now, we pass strings with ANSI codes, assuming TUI (blessed) can handle them or we strip them there if needed.
+     * Blessed supports tags, but raw ANSI might be tricky. Let's pass as is.
+     */
+    private log(message: string): void {
+        if (this.options.logger) {
+            this.options.logger(message);
+        } else {
+            console.log(message);
+        }
+    }
+
+    /**
      * Check if agent mode is available
      */
     isAvailable(): boolean {
@@ -127,19 +145,19 @@ export class AgentSession {
                 case 'text':
                     // Display text content directly
                     if (item.content.trim()) {
-                        console.log(chalk.white(item.content));
+                        this.log(chalk.white(item.content));
                     }
                     break;
 
                 case 'thinking':
                     // Show thinking indicator
                     if (this.options.verbose) {
-                        console.log(chalk.gray.italic(`💭 ${item.content.substring(0, 100)}...`));
+                        this.log(chalk.gray.italic(`💭 ${item.content.substring(0, 100)}...`));
                     }
                     break;
 
                 case 'error':
-                    console.log(chalk.red(`\n❌ Error: ${item.content}`));
+                    this.log(chalk.red(`\n❌ Error: ${item.content}`));
                     break;
             }
         }
@@ -152,15 +170,15 @@ export class AgentSession {
         const displayName = toolName.replace('mcp__kubernetes-tools__', '');
 
         if (this.options.verbose) {
-            console.log(chalk.cyan(`\n🔧 ${displayName}`));
-            console.log(chalk.gray(JSON.stringify(input, null, 2)));
+            this.log(chalk.cyan(`\n🔧 ${displayName}`));
+            this.log(chalk.gray(JSON.stringify(input, null, 2)));
         } else {
             // Show a minimal indicator
             const inputStr = Object.entries(input)
                 .map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`)
                 .join(', ')
                 .substring(0, 80);
-            console.log(chalk.cyan(`\n🔧 ${displayName}: ${inputStr}${inputStr.length >= 80 ? '...' : ''}`));
+            this.log(chalk.cyan(`\n🔧 ${displayName}: ${inputStr}${inputStr.length >= 80 ? '...' : ''}`));
         }
     }
 
@@ -170,10 +188,10 @@ export class AgentSession {
     private handleToolResult(toolName: string, result: string): void {
         if (this.options.verbose && result) {
             const displayName = toolName.replace('mcp__kubernetes-tools__', '');
-            console.log(chalk.green(`\n📋 ${displayName} result:`));
+            this.log(chalk.green(`\n📋 ${displayName} result:`));
             // Truncate long results
             const truncated = result.length > 1000 ? result.substring(0, 1000) + '\n...(truncated)' : result;
-            console.log(chalk.gray(truncated));
+            this.log(chalk.gray(truncated));
         }
     }
 
@@ -181,35 +199,35 @@ export class AgentSession {
      * Display welcome message
      */
     private displayWelcome(): void {
-        console.log(chalk.bold.cyan('\n╔═══════════════════════════════════════════════════════╗'));
-        console.log(chalk.bold.cyan('║           Cluster Code - Agent Mode                   ║'));
-        console.log(chalk.bold.cyan('║         Powered by Claude Agent SDK                   ║'));
-        console.log(chalk.bold.cyan('╚═══════════════════════════════════════════════════════╝\n'));
+        this.log(chalk.bold.cyan('\n╔═══════════════════════════════════════════════════════╗'));
+        this.log(chalk.bold.cyan('║           Cluster Code - Agent Mode                   ║'));
+        this.log(chalk.bold.cyan('║         Powered by Claude Agent SDK                   ║'));
+        this.log(chalk.bold.cyan('╚═══════════════════════════════════════════════════════╝\n'));
 
-        console.log(chalk.white('I can help you manage and troubleshoot your Kubernetes cluster.'));
-        console.log(chalk.white('Type your request in natural language, or use these commands:\n'));
+        this.log(chalk.white('I can help you manage and troubleshoot your Kubernetes cluster.'));
+        this.log(chalk.white('Type your request in natural language, or use these commands:\n'));
 
-        console.log(chalk.gray('  /help     - Show available commands'));
-        console.log(chalk.gray('  /exit     - Exit agent mode'));
-        console.log(chalk.gray('  /verbose  - Toggle verbose output'));
-        console.log(chalk.gray('  /auto     - Toggle auto-execute mode'));
-        console.log(chalk.gray('  /plan     - Toggle planning mode\n'));
+        this.log(chalk.gray('  /help     - Show available commands'));
+        this.log(chalk.gray('  /exit     - Exit agent mode'));
+        this.log(chalk.gray('  /verbose  - Toggle verbose output'));
+        this.log(chalk.gray('  /auto     - Toggle auto-execute mode'));
+        this.log(chalk.gray('  /plan     - Toggle planning mode\n'));
 
         const cluster = this.configManager.getCluster();
         if (cluster) {
-            console.log(chalk.green(`✓ Connected to: ${cluster.context || 'default context'}`));
-            console.log(chalk.green(`✓ Namespace: ${cluster.namespace || 'default'}`));
-            console.log(chalk.green(`✓ Type: ${cluster.type || 'kubernetes'}\n`));
+            this.log(chalk.green(`✓ Connected to: ${cluster.context || 'default context'}`));
+            this.log(chalk.green(`✓ Namespace: ${cluster.namespace || 'default'}`));
+            this.log(chalk.green(`✓ Type: ${cluster.type || 'kubernetes'}\n`));
         } else {
-            console.log(chalk.yellow('⚠ No cluster configured. Run: cluster-code init\n'));
+            this.log(chalk.yellow('⚠ No cluster configured. Run: cluster-code init\n'));
         }
 
         if (this.options.autoExecute) {
-            console.log(chalk.yellow('⚡ Auto-execute mode is ON - commands will run without confirmation\n'));
+            this.log(chalk.yellow('⚡ Auto-execute mode is ON - commands will run without confirmation\n'));
         }
 
         if (this.options.planMode) {
-            console.log(chalk.blue('📋 Planning mode is ON - no commands will be executed\n'));
+            this.log(chalk.blue('📋 Planning mode is ON - no commands will be executed\n'));
         }
     }
 
@@ -217,39 +235,39 @@ export class AgentSession {
      * Display help
      */
     private displayHelp(): void {
-        console.log(chalk.bold('\n📖 Agent Mode Commands\n'));
-        console.log(chalk.white('  /help             Show this help message'));
-        console.log(chalk.white('  /exit, /quit, /q  Exit agent mode'));
-        console.log(chalk.white('  /verbose, /v      Toggle verbose output'));
-        console.log(chalk.white('  /auto             Toggle auto-execute mode'));
-        console.log(chalk.white('  /plan             Toggle planning mode'));
-        console.log(chalk.white('  /clear            Clear conversation history'));
-        console.log(chalk.white('  /status           Show current settings\n'));
+        this.log(chalk.bold('\n📖 Agent Mode Commands\n'));
+        this.log(chalk.white('  /help             Show this help message'));
+        this.log(chalk.white('  /exit, /quit, /q  Exit agent mode'));
+        this.log(chalk.white('  /verbose, /v      Toggle verbose output'));
+        this.log(chalk.white('  /auto             Toggle auto-execute mode'));
+        this.log(chalk.white('  /plan             Toggle planning mode'));
+        this.log(chalk.white('  /clear            Clear conversation history'));
+        this.log(chalk.white('  /status           Show current settings\n'));
 
-        console.log(chalk.bold('💡 Example Prompts\n'));
-        console.log(chalk.gray('  "Show me all pods that are not running"'));
-        console.log(chalk.gray('  "Why is my nginx deployment failing?"'));
-        console.log(chalk.gray('  "Check the logs for the api-server pod"'));
-        console.log(chalk.gray('  "Analyze my cluster for issues with K8sGPT"'));
-        console.log(chalk.gray('  "Scale the frontend deployment to 5 replicas"'));
-        console.log();
+        this.log(chalk.bold('💡 Example Prompts\n'));
+        this.log(chalk.gray('  "Show me all pods that are not running"'));
+        this.log(chalk.gray('  "Why is my nginx deployment failing?"'));
+        this.log(chalk.gray('  "Check the logs for the api-server pod"'));
+        this.log(chalk.gray('  "Analyze my cluster for issues with K8sGPT"'));
+        this.log(chalk.gray('  "Scale the frontend deployment to 5 replicas"'));
+        this.log('');
     }
 
     /**
      * Display current status
      */
     private displayStatus(): void {
-        console.log(chalk.bold('\n⚙️ Current Settings\n'));
-        console.log(chalk.white(`  Verbose:      ${this.options.verbose ? chalk.green('ON') : chalk.gray('OFF')}`));
-        console.log(chalk.white(`  Auto-execute: ${this.options.autoExecute ? chalk.yellow('ON') : chalk.gray('OFF')}`));
-        console.log(chalk.white(`  Plan mode:    ${this.options.planMode ? chalk.blue('ON') : chalk.gray('OFF')}`));
+        this.log(chalk.bold('\n⚙️ Current Settings\n'));
+        this.log(chalk.white(`  Verbose:      ${this.options.verbose ? chalk.green('ON') : chalk.gray('OFF')}`));
+        this.log(chalk.white(`  Auto-execute: ${this.options.autoExecute ? chalk.yellow('ON') : chalk.gray('OFF')}`));
+        this.log(chalk.white(`  Plan mode:    ${this.options.planMode ? chalk.blue('ON') : chalk.gray('OFF')}`));
 
         const cluster = this.configManager.getCluster();
         if (cluster) {
-            console.log(chalk.white(`  Context:      ${chalk.cyan(cluster.context || 'default')}`));
-            console.log(chalk.white(`  Namespace:    ${chalk.cyan(cluster.namespace || 'default')}`));
+            this.log(chalk.white(`  Context:      ${chalk.cyan(cluster.context || 'default')}`));
+            this.log(chalk.white(`  Namespace:    ${chalk.cyan(cluster.namespace || 'default')}`));
         }
-        console.log();
+        this.log('');
     }
 
     /**
@@ -262,7 +280,7 @@ export class AgentSession {
             case 'exit':
             case 'quit':
             case 'q':
-                console.log(chalk.cyan('\nGoodbye! 👋\n'));
+                this.log(chalk.cyan('\nGoodbye! 👋\n'));
                 this.running = false;
                 return true;
 
@@ -275,24 +293,24 @@ export class AgentSession {
             case 'v':
                 this.options.verbose = !this.options.verbose;
                 this.client.setOptions({ verbose: this.options.verbose });
-                console.log(chalk.green(`\n✓ Verbose mode ${this.options.verbose ? 'enabled' : 'disabled'}\n`));
+                this.log(chalk.green(`\n✓ Verbose mode ${this.options.verbose ? 'enabled' : 'disabled'}\n`));
                 return true;
 
             case 'auto':
                 this.options.autoExecute = !this.options.autoExecute;
                 this.client.setOptions({ autoExecute: this.options.autoExecute });
-                console.log(chalk.green(`\n✓ Auto-execute ${this.options.autoExecute ? 'enabled' : 'disabled'}\n`));
+                this.log(chalk.green(`\n✓ Auto-execute ${this.options.autoExecute ? 'enabled' : 'disabled'}\n`));
                 return true;
 
             case 'plan':
                 this.options.planMode = !this.options.planMode;
                 this.client.setOptions({ planMode: this.options.planMode });
-                console.log(chalk.green(`\n✓ Planning mode ${this.options.planMode ? 'enabled' : 'disabled'}\n`));
+                this.log(chalk.green(`\n✓ Planning mode ${this.options.planMode ? 'enabled' : 'disabled'}\n`));
                 return true;
 
             case 'clear':
                 this.conversationHistory = [];
-                console.log(chalk.green('\n✓ Conversation history cleared\n'));
+                this.log(chalk.green('\n✓ Conversation history cleared\n'));
                 return true;
 
             case 'status':
@@ -300,8 +318,8 @@ export class AgentSession {
                 return true;
 
             default:
-                console.log(chalk.yellow(`\nUnknown command: /${command}`));
-                console.log(chalk.gray('Type /help for available commands\n'));
+                this.log(chalk.yellow(`\nUnknown command: /${command}`));
+                this.log(chalk.gray('Type /help for available commands\n'));
                 return true;
         }
     }
@@ -310,6 +328,11 @@ export class AgentSession {
      * Get user input
      */
     private async getUserInput(): Promise<string> {
+        // If headless/custom logger (likely TUI), getUserInput should not be called this way
+        // TUI manages input loop. This method is only for CLI interactive mode.
+        // However, if we reuse start() loop for TUI, we need to abstract input too.
+        // For TUI, we won't call start(), we'll likely call runSingle() or a new method.
+
         const { input } = await inquirer.prompt([
             {
                 type: 'input',
@@ -333,23 +356,23 @@ export class AgentSession {
         // Add to conversation history
         this.conversationHistory.push(`User: ${message}`);
 
-        console.log(chalk.bold.green('\n🤖 Assistant:\n'));
+        this.log(chalk.bold.green('\n🤖 Assistant:\n'));
 
         try {
             const { success } = await this.client.runQuery(message);
 
             if (!success) {
-                console.log(chalk.yellow('\n⚠ Query was interrupted\n'));
+                this.log(chalk.yellow('\n⚠ Query was interrupted\n'));
             }
         } catch (error: any) {
-            console.log(chalk.red(`\n❌ Error: ${error.message}\n`));
+            this.log(chalk.red(`\n❌ Error: ${error.message}\n`));
 
             if (error.message.includes('API key')) {
-                console.log(chalk.yellow('Set your API key: export ANTHROPIC_API_KEY=your-key\n'));
+                this.log(chalk.yellow('Set your API key: export ANTHROPIC_API_KEY=your-key\n'));
             }
         }
 
-        console.log(); // Add spacing after response
+        this.log(''); // Add spacing after response
     }
 
     /**
@@ -358,11 +381,11 @@ export class AgentSession {
     async start(): Promise<void> {
         // Check if configured
         if (!this.isAvailable()) {
-            console.log(chalk.red('\n❌ Agent mode requires Claude API key.\n'));
-            console.log(chalk.white('Set one of:'));
-            console.log(chalk.gray('  export ANTHROPIC_API_KEY=your-key'));
-            console.log(chalk.gray('  export CLAUDE_CODE_USE_BEDROCK=1 (with AWS credentials)'));
-            console.log(chalk.gray('  export CLAUDE_CODE_USE_VERTEX=1 (with Google Cloud credentials)\n'));
+            this.log(chalk.red('\n❌ Agent mode requires Claude API key.\n'));
+            this.log(chalk.white('Set one of:'));
+            this.log(chalk.gray('  export ANTHROPIC_API_KEY=your-key'));
+            this.log(chalk.gray('  export CLAUDE_CODE_USE_BEDROCK=1 (with AWS credentials)'));
+            this.log(chalk.gray('  export CLAUDE_CODE_USE_VERTEX=1 (with Google Cloud credentials)\n'));
             return;
         }
 
@@ -394,10 +417,10 @@ export class AgentSession {
             } catch (error: any) {
                 if (error.isTtyError || error.name === 'ExitPromptError') {
                     // User pressed Ctrl+C
-                    console.log(chalk.cyan('\n\nGoodbye! 👋\n'));
+                    this.log(chalk.cyan('\n\nGoodbye! 👋\n'));
                     this.running = false;
                 } else {
-                    console.log(chalk.red(`\nError: ${error.message}\n`));
+                    this.log(chalk.red(`\nError: ${error.message}\n`));
                 }
             }
         }
@@ -408,19 +431,19 @@ export class AgentSession {
      */
     async runSingle(prompt: string): Promise<void> {
         if (!this.isAvailable()) {
-            console.log(chalk.red('Agent mode requires Claude API key.'));
+            this.log(chalk.red('Agent mode requires Claude API key.'));
             return;
         }
 
-        console.log(chalk.bold.green('\n🤖 Assistant:\n'));
+        this.log(chalk.bold.green('\n🤖 Assistant:\n'));
 
         try {
             await this.client.runQuery(prompt);
         } catch (error: any) {
-            console.log(chalk.red(`\nError: ${error.message}\n`));
+            this.log(chalk.red(`\nError: ${error.message}\n`));
         }
 
-        console.log();
+        this.log('');
     }
 
     /**
