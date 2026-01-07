@@ -35,6 +35,21 @@ import { InteractiveSession } from './interactive';
 import { AgentSession } from './agent';
 
 import { startTui } from './tui';
+import {
+  setupGitHubCommand,
+  setGitHubTokenCommand,
+  configureModelCommand,
+  showAuthCommand,
+  listModelsCommand,
+  whoamiCommand,
+  logoutGitHubCommand,
+  testConnectionCommand,
+  switchModelCommand,
+  setDefaultModelCommand,
+  runSetupCommand,
+} from './cli';
+import { loadModelConfig, getModelDisplayName } from './config/model-selector';
+import { getAuthStatus } from './auth';
 
 const program = new Command();
 
@@ -355,6 +370,219 @@ rlCmd
     }
   });
 
+// GitHub Authentication commands
+const githubCmd = program
+  .command('github')
+  .description('Manage GitHub Copilot authentication and settings');
+
+githubCmd
+  .command('setup')
+  .description('Start GitHub OAuth authentication flow')
+  .action(async () => {
+    try {
+      await setupGitHubCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+githubCmd
+  .command('token <token>')
+  .description('Set GitHub token manually')
+  .action(async (token) => {
+    try {
+      await setGitHubTokenCommand(token);
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+githubCmd
+  .command('logout')
+  .description('Remove GitHub credentials')
+  .action(async () => {
+    try {
+      await logoutGitHubCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+githubCmd
+  .command('status')
+  .description('Show current authentication status')
+  .action(async () => {
+    try {
+      await showAuthCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+githubCmd
+  .command('test')
+  .description('Test GitHub Copilot API connection')
+  .action(async () => {
+    try {
+      await testConnectionCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+// Model commands
+const modelCmd = program
+  .command('model')
+  .description('Manage AI model selection');
+
+modelCmd
+  .command('list')
+  .alias('ls')
+  .description('List all available models')
+  .action(async () => {
+    try {
+      await listModelsCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+modelCmd
+  .command('select')
+  .description('Interactive model selection')
+  .action(async () => {
+    try {
+      await configureModelCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+modelCmd
+  .command('set <model>')
+  .description('Set the default model')
+  .action(async (model) => {
+    try {
+      setDefaultModelCommand(model);
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+modelCmd
+  .command('use <model>')
+  .description('Use a model for this session only')
+  .action(async (model) => {
+    try {
+      switchModelCommand(model);
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+// Top-level convenience options (aliases for common commands)
+program
+  .option('--setup-github', 'Start GitHub OAuth authentication flow')
+  .option('--github-token <token>', 'Set GitHub token manually')
+  .option('--configure-model', 'Interactive model selection')
+  .option('--show-auth', 'Display current authentication status')
+  .option('--list-models', 'Show all available models')
+  .option('--whoami', 'Show GitHub user info and current model')
+  .option('--logout-github', 'Remove GitHub credentials')
+  .option('--test-connection', 'Test GitHub Copilot API access')
+  .option('--model <model>', 'Use a specific model for this session')
+  .option('--set-default-model <model>', 'Set the default model permanently');
+
+// Handle top-level options before parsing
+program.hook('preAction', async (thisCommand) => {
+  const opts = thisCommand.opts();
+
+  if (opts.setupGithub) {
+    await setupGitHubCommand();
+    process.exit(0);
+  }
+
+  if (opts.githubToken) {
+    await setGitHubTokenCommand(opts.githubToken);
+    process.exit(0);
+  }
+
+  if (opts.configureModel) {
+    await configureModelCommand();
+    process.exit(0);
+  }
+
+  if (opts.showAuth) {
+    await showAuthCommand();
+    process.exit(0);
+  }
+
+  if (opts.listModels) {
+    await listModelsCommand();
+    process.exit(0);
+  }
+
+  if (opts.whoami) {
+    await whoamiCommand();
+    process.exit(0);
+  }
+
+  if (opts.logoutGithub) {
+    await logoutGitHubCommand();
+    process.exit(0);
+  }
+
+  if (opts.testConnection) {
+    await testConnectionCommand();
+    process.exit(0);
+  }
+
+  if (opts.setDefaultModel) {
+    setDefaultModelCommand(opts.setDefaultModel);
+    process.exit(0);
+  }
+
+  if (opts.model) {
+    switchModelCommand(opts.model);
+    // Don't exit - allow the command to continue with the selected model
+  }
+});
+
+// Whoami command (standalone)
+program
+  .command('whoami')
+  .description('Show GitHub user info and current model')
+  .action(async () => {
+    try {
+      await whoamiCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
+// Setup command (first-time setup wizard)
+program
+  .command('setup')
+  .description('Run first-time setup wizard')
+  .action(async () => {
+    try {
+      await runSetupCommand();
+    } catch (error: any) {
+      logger.error(error.message);
+      process.exit(1);
+    }
+  });
+
 // Version command (enhanced)
 program
   .command('version')
@@ -452,10 +680,24 @@ async function handleDefaultBehavior() {
   const config = configManager.getConfig();
   const isLLMConfigured = configManager.isLLMConfigured();
 
-  // Check if configured
-  const isConfigured = config.cluster && config.cluster.context && isLLMConfigured;
+  // Also check for GitHub Copilot authentication
+  const authStatus = await getAuthStatus();
+  const hasCopilot = authStatus.authenticated && authStatus.tokenValid;
+
+  // Check if configured (either traditional LLM or Copilot)
+  const isConfigured = config.cluster && config.cluster.context && (isLLMConfigured || hasCopilot);
 
   if (isConfigured) {
+    // Show current provider info
+    if (hasCopilot) {
+      const modelConfig = loadModelConfig();
+      const modelName = modelConfig?.model ? getModelDisplayName(modelConfig.model) : 'gpt-4o';
+      console.log(chalk.cyan(`\nCluster Code v${packageJson.version}`));
+      console.log(chalk.gray(`Provider: GitHub Copilot (${modelName})`));
+      console.log(chalk.gray(`Authenticated as: @${authStatus.user?.login}`));
+      console.log(chalk.gray('Ready! How can I help?\n'));
+    }
+
     // Launch interactive mode directly
     await startInteractiveMode();
   } else {
@@ -469,24 +711,33 @@ async function handleDefaultBehavior() {
       console.log(chalk.yellow('⚠ Cluster not configured\n'));
       console.log(chalk.bold('First Time Setup:'));
       console.log(chalk.gray('  1. Initialize cluster: ') + chalk.cyan('cluster-code init'));
-      console.log(chalk.gray('  2. Set API key:        ') + chalk.cyan('export ANTHROPIC_API_KEY=your-key-here'));
+      console.log(chalk.gray('  2. Setup GitHub:       ') + chalk.cyan('cluster-code --setup-github'));
+      console.log(chalk.gray('     Or set API key:     ') + chalk.cyan('export ANTHROPIC_API_KEY=your-key-here'));
       console.log(chalk.gray('  3. Start interactive:  ') + chalk.cyan('cluster-code\n'));
-    } else if (!isLLMConfigured) {
+    } else if (!isLLMConfigured && !hasCopilot) {
       console.log(chalk.yellow('⚠ LLM provider not configured\n'));
       console.log(chalk.bold('Setup LLM Provider:'));
-      console.log(chalk.gray('  Option 1 - Anthropic (Claude):'));
+      console.log(chalk.gray('  Option 1 - GitHub Copilot (Recommended):'));
+      console.log(chalk.cyan('    cluster-code --setup-github\n'));
+      console.log(chalk.gray('  Option 2 - Anthropic (Claude):'));
       console.log(chalk.cyan('    export ANTHROPIC_API_KEY=your-key-here\n'));
-      console.log(chalk.gray('  Option 2 - OpenAI (GPT):'));
+      console.log(chalk.gray('  Option 3 - OpenAI (GPT):'));
       console.log(chalk.cyan('    export OPENAI_API_KEY=your-key-here\n'));
-      console.log(chalk.gray('  Option 3 - Custom provider:'));
+      console.log(chalk.gray('  Option 4 - Custom provider:'));
       console.log(chalk.cyan('    cluster-code config provider add <name>\n'));
     }
 
     console.log(chalk.bold('Quick Start:'));
     console.log(chalk.gray('  1. Initialize: ') + chalk.cyan('cluster-code init'));
-    console.log(chalk.gray('  2. Interactive:') + chalk.cyan('cluster-code') + chalk.gray(' (or ') + chalk.cyan('cluster-code interactive') + chalk.gray(')'));
-    console.log(chalk.gray('  3. Diagnose:   ') + chalk.cyan('cluster-code diagnose'));
-    console.log(chalk.gray('  4. Legacy chat:') + chalk.cyan('cluster-code chat\n'));
+    console.log(chalk.gray('  2. Setup auth: ') + chalk.cyan('cluster-code setup'));
+    console.log(chalk.gray('  3. Interactive:') + chalk.cyan('cluster-code') + chalk.gray(' (or ') + chalk.cyan('cluster-code interactive') + chalk.gray(')'));
+    console.log(chalk.gray('  4. Diagnose:   ') + chalk.cyan('cluster-code diagnose\n'));
+
+    console.log(chalk.bold('GitHub Copilot Commands:'));
+    console.log(chalk.gray('  --setup-github     ') + chalk.gray('Start OAuth authentication'));
+    console.log(chalk.gray('  --configure-model  ') + chalk.gray('Select AI model'));
+    console.log(chalk.gray('  --whoami           ') + chalk.gray('Show current user and model'));
+    console.log(chalk.gray('  --list-models      ') + chalk.gray('List available models\n'));
 
     console.log(chalk.bold('Available Commands:'));
     program.outputHelp();

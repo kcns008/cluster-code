@@ -56,6 +56,7 @@ export type ProviderType =
   | 'google'
   | 'ollama'
   | 'openai-compatible'
+  | 'copilot'
   | 'custom';
 
 export interface ModelConfig {
