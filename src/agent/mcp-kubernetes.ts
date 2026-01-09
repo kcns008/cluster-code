@@ -2,6 +2,7 @@
  * Kubernetes MCP Server
  * 
  * Custom MCP server with Kubernetes-specific tools for the Agent SDK
+ * Enhanced with proper typing and additional tools
  */
 
 import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
@@ -11,6 +12,24 @@ import { promisify } from 'util';
 import { configManager } from '../config';
 
 const execAsync = promisify(exec);
+
+/**
+ * Tool result type for MCP tools
+ */
+interface ToolResult {
+    content: Array<{ type: 'text'; text: string }>;
+    isError?: boolean;
+}
+
+/**
+ * Tool result helper for consistent response formatting
+ */
+function createToolResult(text: string, isError = false): ToolResult {
+    return {
+        content: [{ type: 'text', text }],
+        isError,
+    };
+}
 
 /**
  * Execute a command and return result
@@ -85,7 +104,7 @@ const kubectlTool = tool(
         namespace: z.string().optional().describe('Override the default namespace for this command'),
         output_format: z.enum(['text', 'json', 'yaml']).optional().describe('Output format (default: text)'),
     },
-    async ({ command, namespace, output_format }) => {
+    async ({ command, namespace, output_format }): Promise<ToolResult> => {
         // Add output format if specified and not already in command
         let finalCommand = command;
         if (output_format && !command.includes('-o ') && !command.includes('--output')) {
@@ -96,16 +115,9 @@ const kubectlTool = tool(
         const result = await executeCommand(fullCommand);
 
         if (result.success) {
-            return {
-                type: 'text' as const,
-                text: result.output || 'Command completed successfully with no output.',
-            };
+            return createToolResult(result.output || 'Command completed successfully with no output.');
         } else {
-            return {
-                type: 'text' as const,
-                text: `Command failed:\n${result.error}\n\nPartial output:\n${result.output}`,
-                isError: true,
-            };
+            return createToolResult(`Command failed:\n${result.error}\n\nPartial output:\n${result.output}`, true);
         }
     }
 );
@@ -121,16 +133,15 @@ const describeResourceTool = tool(
         resource_name: z.string().describe('The name of the resource'),
         namespace: z.string().optional().describe('The namespace of the resource (not needed for cluster-scoped resources like nodes)'),
     },
-    async ({ resource_type, resource_name, namespace }) => {
+    async ({ resource_type, resource_name, namespace }): Promise<ToolResult> => {
         const command = `describe ${resource_type} ${resource_name}`;
         const fullCommand = await buildCommand(command, namespace);
         const result = await executeCommand(fullCommand);
 
-        return {
-            type: 'text' as const,
-            text: result.success ? result.output : `Failed to describe ${resource_type}/${resource_name}: ${result.error}`,
-            isError: !result.success,
-        };
+        return createToolResult(
+            result.success ? result.output : `Failed to describe ${resource_type}/${resource_name}: ${result.error}`,
+            !result.success
+        );
     }
 );
 
@@ -148,7 +159,7 @@ const getLogsTool = tool(
         previous: z.boolean().optional().describe('Get logs from the previous container instance (useful for crash analysis)'),
         since: z.string().optional().describe('Only return logs newer than this duration (e.g., "1h", "30m", "10s")'),
     },
-    async ({ pod_name, container, namespace, tail_lines, previous, since }) => {
+    async ({ pod_name, container, namespace, tail_lines, previous, since }): Promise<ToolResult> => {
         let command = `logs ${pod_name}`;
 
         if (container) {
@@ -172,11 +183,10 @@ const getLogsTool = tool(
         const fullCommand = await buildCommand(command, namespace);
         const result = await executeCommand(fullCommand);
 
-        return {
-            type: 'text' as const,
-            text: result.success ? (result.output || 'No logs available.') : `Failed to get logs: ${result.error}`,
-            isError: !result.success,
-        };
+        return createToolResult(
+            result.success ? (result.output || 'No logs available.') : `Failed to get logs: ${result.error}`,
+            !result.success
+        );
     }
 );
 
@@ -191,7 +201,7 @@ const getEventsTool = tool(
         resource_name: z.string().optional().describe('Filter events for a specific resource'),
         field_selector: z.string().optional().describe('Field selector to filter events (e.g., "type=Warning")'),
     },
-    async ({ namespace, resource_name, field_selector }) => {
+    async ({ namespace, resource_name, field_selector }): Promise<ToolResult> => {
         let command = 'get events --sort-by=.lastTimestamp';
 
         if (!namespace) {
@@ -209,11 +219,10 @@ const getEventsTool = tool(
         const fullCommand = await buildCommand(command, namespace);
         const result = await executeCommand(fullCommand);
 
-        return {
-            type: 'text' as const,
-            text: result.success ? (result.output || 'No events found.') : `Failed to get events: ${result.error}`,
-            isError: !result.success,
-        };
+        return createToolResult(
+            result.success ? (result.output || 'No events found.') : `Failed to get events: ${result.error}`,
+            !result.success
+        );
     }
 );
 
@@ -226,7 +235,7 @@ const clusterHealthTool = tool(
     {
         include_metrics: z.boolean().optional().describe('Include resource usage metrics if metrics-server is available'),
     },
-    async ({ include_metrics }) => {
+    async ({ include_metrics }): Promise<ToolResult> => {
         const results: string[] = [];
 
         // Get node status
@@ -255,10 +264,7 @@ const clusterHealthTool = tool(
             results.push(metricsResult.output || 'Not available');
         }
 
-        return {
-            type: 'text' as const,
-            text: results.join('\n'),
-        };
+        return createToolResult(results.join('\n'));
     }
 );
 
@@ -272,7 +278,7 @@ const helmTool = tool(
         command: z.string().describe('The Helm command to execute without the helm prefix (e.g., "list -A", "status my-release", "repo list")'),
         namespace: z.string().optional().describe('The namespace for helm operations'),
     },
-    async ({ command, namespace }) => {
+    async ({ command, namespace }): Promise<ToolResult> => {
         let fullCommand = `helm ${command}`;
 
         if (namespace && !command.includes('-n ') && !command.includes('--namespace')) {
@@ -281,11 +287,10 @@ const helmTool = tool(
 
         const result = await executeCommand(fullCommand);
 
-        return {
-            type: 'text' as const,
-            text: result.success ? result.output : `Helm command failed: ${result.error}`,
-            isError: !result.success,
-        };
+        return createToolResult(
+            result.success ? result.output : `Helm command failed: ${result.error}`,
+            !result.success
+        );
     }
 );
 
@@ -297,18 +302,17 @@ const k8sgptAnalyzeTool = tool(
     'Run K8sGPT analysis to identify issues in the cluster. K8sGPT uses AI to analyze Kubernetes resources and provide recommendations.',
     {
         namespace: z.string().optional().describe('Limit analysis to a specific namespace'),
-        filter: z.string().optional().describe('Filter by resource type (e.exports., Pod, Service, Deployment)'),
+        filter: z.string().optional().describe('Filter by resource type (e.g., Pod, Service, Deployment)'),
         explain: z.boolean().optional().describe('Get AI-powered explanations for issues (default: true)'),
     },
-    async ({ namespace, filter, explain }) => {
+    async ({ namespace, filter, explain }): Promise<ToolResult> => {
         // Check if k8sgpt is installed
         const checkResult = await executeCommand('which k8sgpt');
         if (!checkResult.success) {
-            return {
-                type: 'text' as const,
-                text: 'K8sGPT is not installed. Install it with: brew install k8sgpt\nOr see: https://docs.k8sgpt.ai/getting-started/installation/',
-                isError: true,
-            };
+            return createToolResult(
+                'K8sGPT is not installed. Install it with: brew install k8sgpt\nOr see: https://docs.k8sgpt.ai/getting-started/installation/',
+                true
+            );
         }
 
         let command = 'k8sgpt analyze';
@@ -327,11 +331,128 @@ const k8sgptAnalyzeTool = tool(
 
         const result = await executeCommand(command, 120000); // 2 minute timeout for AI analysis
 
-        return {
-            type: 'text' as const,
-            text: result.success ? (result.output || 'No issues found.') : `K8sGPT analysis failed: ${result.error}`,
-            isError: !result.success,
-        };
+        return createToolResult(
+            result.success ? (result.output || 'No issues found.') : `K8sGPT analysis failed: ${result.error}`,
+            !result.success
+        );
+    }
+);
+
+/**
+ * scale_resource tool - Scale a deployment, statefulset, or replicaset
+ */
+const scaleResourceTool = tool(
+    'scale_resource',
+    'Scale a Kubernetes deployment, statefulset, or replicaset to a specified number of replicas.',
+    {
+        resource_type: z.enum(['deployment', 'statefulset', 'replicaset']).describe('The type of resource to scale'),
+        resource_name: z.string().describe('The name of the resource to scale'),
+        replicas: z.number().min(0).describe('The target number of replicas'),
+        namespace: z.string().optional().describe('The namespace of the resource'),
+    },
+    async ({ resource_type, resource_name, replicas, namespace }): Promise<ToolResult> => {
+        const command = `scale ${resource_type} ${resource_name} --replicas=${replicas}`;
+        const fullCommand = await buildCommand(command, namespace);
+        const result = await executeCommand(fullCommand);
+
+        return createToolResult(
+            result.success 
+                ? `Successfully scaled ${resource_type}/${resource_name} to ${replicas} replicas`
+                : `Failed to scale: ${result.error}`,
+            !result.success
+        );
+    }
+);
+
+/**
+ * rollout_status tool - Check the rollout status of a deployment
+ */
+const rolloutStatusTool = tool(
+    'rollout_status',
+    'Check the rollout status of a deployment, daemonset, or statefulset.',
+    {
+        resource_type: z.enum(['deployment', 'daemonset', 'statefulset']).describe('The type of resource'),
+        resource_name: z.string().describe('The name of the resource'),
+        namespace: z.string().optional().describe('The namespace of the resource'),
+        watch: z.boolean().optional().describe('Watch the rollout status until completion (default: false)'),
+    },
+    async ({ resource_type, resource_name, namespace, watch }): Promise<ToolResult> => {
+        let command = `rollout status ${resource_type}/${resource_name}`;
+        
+        if (!watch) {
+            command += ' --watch=false';
+        }
+
+        const fullCommand = await buildCommand(command, namespace);
+        const result = await executeCommand(fullCommand, watch ? 300000 : 60000); // 5 min timeout if watching
+
+        return createToolResult(
+            result.success ? result.output : `Failed to get rollout status: ${result.error}`,
+            !result.success
+        );
+    }
+);
+
+/**
+ * get_resource_yaml tool - Get the YAML manifest of a resource
+ */
+const getResourceYamlTool = tool(
+    'get_resource_yaml',
+    'Get the YAML manifest of a Kubernetes resource. Useful for viewing or modifying resource configurations.',
+    {
+        resource_type: z.string().describe('The type of resource (e.g., pod, deployment, service)'),
+        resource_name: z.string().describe('The name of the resource'),
+        namespace: z.string().optional().describe('The namespace of the resource'),
+    },
+    async ({ resource_type, resource_name, namespace }): Promise<ToolResult> => {
+        const command = `get ${resource_type} ${resource_name} -o yaml`;
+        const fullCommand = await buildCommand(command, namespace);
+        const result = await executeCommand(fullCommand);
+
+        return createToolResult(
+            result.success ? result.output : `Failed to get resource YAML: ${result.error}`,
+            !result.success
+        );
+    }
+);
+
+/**
+ * port_forward tool - Set up port forwarding to a pod or service
+ */
+const portForwardTool = tool(
+    'port_forward',
+    'Set up port forwarding to a pod or service. Note: This runs in the background.',
+    {
+        resource_type: z.enum(['pod', 'service', 'deployment']).describe('The type of resource'),
+        resource_name: z.string().describe('The name of the resource'),
+        local_port: z.number().describe('The local port to forward from'),
+        remote_port: z.number().describe('The remote port to forward to'),
+        namespace: z.string().optional().describe('The namespace of the resource'),
+    },
+    async ({ resource_type, resource_name, local_port, remote_port, namespace }): Promise<ToolResult> => {
+        const cli = await getCLI();
+        const cluster = configManager.getCluster();
+        
+        let command = `${cli} port-forward`;
+        
+        if (cluster?.context) {
+            command += ` --context=${cluster.context}`;
+        }
+        
+        if (namespace || cluster?.namespace) {
+            command += ` --namespace=${namespace || cluster?.namespace}`;
+        }
+        
+        command += ` ${resource_type}/${resource_name} ${local_port}:${remote_port} &`;
+        
+        const result = await executeCommand(command);
+
+        return createToolResult(
+            result.success 
+                ? `Port forwarding started: localhost:${local_port} -> ${resource_type}/${resource_name}:${remote_port}\nNote: Run 'pkill -f port-forward' to stop.`
+                : `Failed to start port forwarding: ${result.error}`,
+            !result.success
+        );
     }
 );
 
@@ -350,6 +471,10 @@ export function createKubernetesMcpServer() {
             clusterHealthTool,
             helmTool,
             k8sgptAnalyzeTool,
+            scaleResourceTool,
+            rolloutStatusTool,
+            getResourceYamlTool,
+            portForwardTool,
         ],
     });
 }
@@ -366,5 +491,9 @@ export function getKubernetesToolNames(): string[] {
         'mcp__kubernetes-tools__cluster_health',
         'mcp__kubernetes-tools__helm',
         'mcp__kubernetes-tools__k8sgpt_analyze',
+        'mcp__kubernetes-tools__scale_resource',
+        'mcp__kubernetes-tools__rollout_status',
+        'mcp__kubernetes-tools__get_resource_yaml',
+        'mcp__kubernetes-tools__port_forward',
     ];
 }

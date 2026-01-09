@@ -335,6 +335,7 @@ function getDefaultModel(type: ProviderType): string {
     google: 'gemini-1.5-pro',
     ollama: 'llama3',
     'openai-compatible': 'model-name',
+    copilot: 'gpt-4',
     custom: 'model-name',
   };
 

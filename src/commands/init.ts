@@ -8,9 +8,8 @@ import { logger } from '../utils/logger';
 import { getCurrentContext, getContexts, getNamespaces, isKubectlAvailable, isClusterReachable, resetCLICache } from '../utils/kubectl';
 import { detectCluster, ClusterType, CloudProvider } from '../utils/cluster-detector';
 import { getAllCLIVersions } from '../utils/cli-version-manager';
-import { checkPython, getPufferLibStatus } from '../pufferlib/checker';
+import { checkPython } from '../pufferlib/checker';
 import { setupPufferLib, generatePufferLibConfig } from '../pufferlib/setup';
-import { getDefaultEnvPath } from '../pufferlib/config';
 
 interface InitOptions {
   context?: string;

@@ -47,7 +47,7 @@ import {
   switchModelCommand,
   setDefaultModelCommand,
   runSetupCommand,
-} from './cli';
+} from './cli/index';
 import { loadModelConfig, getModelDisplayName } from './config/model-selector';
 import { getAuthStatus } from './auth';
 

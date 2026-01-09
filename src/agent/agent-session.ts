@@ -2,11 +2,12 @@
  * Agent Session
  * 
  * Interactive agentic session using the Claude Agent SDK
+ * Enhanced with session persistence, better streaming, and improved UX
  */
 
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+import { SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { AgentClient, AgentClientOptions } from './agent-client';
 import { ConfigManager } from '../config';
 
@@ -19,6 +20,10 @@ export interface AgentSessionOptions extends AgentClientOptions {
      * Custom logger for TUI integration
      */
     logger?: (message: string) => void;
+    /**
+     * Persist session ID for resumption
+     */
+    persistSession?: boolean;
 }
 
 interface ParsedMessage {
@@ -89,6 +94,7 @@ function parseMessage(message: SDKMessage): ParsedMessage[] {
 
 /**
  * Agent Session for interactive agentic operations
+ * Enhanced with session persistence, cost tracking, and improved UX
  */
 export class AgentSession {
     private client: AgentClient;
@@ -96,10 +102,14 @@ export class AgentSession {
     private options: AgentSessionOptions;
     private running: boolean = false;
     private conversationHistory: string[] = [];
+    private currentSessionId: string | null = null;
+    private sessionCost: number = 0;
+    private sessionTurns: number = 0;
 
     constructor(options: AgentSessionOptions = {}) {
         this.options = {
             showWelcome: true,
+            persistSession: true,
             ...options,
         };
         this.configManager = new ConfigManager();
@@ -110,14 +120,14 @@ export class AgentSession {
             onMessage: (message) => this.handleMessage(message),
             onToolCall: (toolName, input) => this.handleToolCall(toolName, input),
             onToolResult: (toolName, result) => this.handleToolResult(toolName, result),
+            onSessionStart: (sessionId) => this.handleSessionStart(sessionId),
+            onSessionEnd: (result) => this.handleSessionEnd(result),
+            onPermissionRequest: async (toolName, input) => this.handlePermissionRequest(toolName, input),
         });
     }
 
     /**
      * Internal logger that routes to console or custom logger
-     * Removes ANSI codes if custom logger is used (optional, but TUI usually handles its own coloring or expects raw text)
-     * For now, we pass strings with ANSI codes, assuming TUI (blessed) can handle them or we strip them there if needed.
-     * Blessed supports tags, but raw ANSI might be tricky. Let's pass as is.
      */
     private log(message: string): void {
         if (this.options.logger) {
@@ -132,6 +142,71 @@ export class AgentSession {
      */
     isAvailable(): boolean {
         return this.client.isConfigured();
+    }
+
+    /**
+     * Get current session ID
+     */
+    getSessionId(): string | null {
+        return this.currentSessionId;
+    }
+
+    /**
+     * Handle session start
+     */
+    private handleSessionStart(sessionId: string): void {
+        this.currentSessionId = sessionId;
+        if (this.options.verbose) {
+            this.log(chalk.gray(`📍 Session ID: ${sessionId}`));
+        }
+    }
+
+    /**
+     * Handle session end
+     */
+    private handleSessionEnd(result: SDKResultMessage): void {
+        if (result.subtype === 'success') {
+            this.sessionCost += result.total_cost_usd || 0;
+            this.sessionTurns += result.num_turns || 0;
+
+            if (this.options.verbose) {
+                this.log(chalk.gray(`\n💰 Query cost: $${(result.total_cost_usd || 0).toFixed(4)}`));
+                this.log(chalk.gray(`🔄 Turns: ${result.num_turns || 0}`));
+            }
+        } else if (result.subtype === 'error_max_turns') {
+            this.log(chalk.yellow('\n⚠ Maximum turns reached. Please continue with a follow-up question.'));
+        } else if (result.subtype === 'error_max_budget_usd') {
+            this.log(chalk.red('\n❌ Budget limit reached.'));
+        } else if (result.subtype === 'error_during_execution') {
+            this.log(chalk.red(`\n❌ Error during execution: ${(result as any).errors?.join(', ') || 'Unknown error'}`));
+        }
+    }
+
+    /**
+     * Handle permission request for dangerous operations
+     */
+    private async handlePermissionRequest(toolName: string, input: Record<string, unknown>): Promise<boolean> {
+        const displayName = toolName.replace('mcp__kubernetes-tools__', '');
+        const command = (input.command as string) || JSON.stringify(input);
+
+        this.log(chalk.yellow(`\n⚠️ Permission required for ${displayName}:`));
+        this.log(chalk.gray(`   ${command.substring(0, 100)}${command.length > 100 ? '...' : ''}`));
+
+        if (this.options.logger) {
+            // In TUI mode, auto-approve or use a different mechanism
+            return this.options.autoExecute || false;
+        }
+
+        const { approved } = await inquirer.prompt([
+            {
+                type: 'confirm',
+                name: 'approved',
+                message: 'Allow this operation?',
+                default: false,
+            },
+        ]);
+
+        return approved;
     }
 
     /**
@@ -242,7 +317,9 @@ export class AgentSession {
         this.log(chalk.white('  /auto             Toggle auto-execute mode'));
         this.log(chalk.white('  /plan             Toggle planning mode'));
         this.log(chalk.white('  /clear            Clear conversation history'));
-        this.log(chalk.white('  /status           Show current settings\n'));
+        this.log(chalk.white('  /status           Show current settings'));
+        this.log(chalk.white('  /session          Show current session info'));
+        this.log(chalk.white('  /cost             Show session cost summary\n'));
 
         this.log(chalk.bold('💡 Example Prompts\n'));
         this.log(chalk.gray('  "Show me all pods that are not running"'));
@@ -250,6 +327,7 @@ export class AgentSession {
         this.log(chalk.gray('  "Check the logs for the api-server pod"'));
         this.log(chalk.gray('  "Analyze my cluster for issues with K8sGPT"'));
         this.log(chalk.gray('  "Scale the frontend deployment to 5 replicas"'));
+        this.log(chalk.gray('  "Get the YAML for the nginx deployment"'));
         this.log('');
     }
 
@@ -271,6 +349,29 @@ export class AgentSession {
     }
 
     /**
+     * Display session info
+     */
+    private displaySessionInfo(): void {
+        this.log(chalk.bold('\n📍 Session Information\n'));
+        this.log(chalk.white(`  Session ID:   ${this.currentSessionId ? chalk.cyan(this.currentSessionId) : chalk.gray('Not started')}`));
+        this.log(chalk.white(`  Total Cost:   ${chalk.yellow('$' + this.sessionCost.toFixed(4))}`));
+        this.log(chalk.white(`  Total Turns:  ${chalk.cyan(this.sessionTurns.toString())}`));
+        this.log(chalk.white(`  Queries:      ${chalk.cyan(this.conversationHistory.length.toString())}`));
+        this.log('');
+    }
+
+    /**
+     * Display cost summary
+     */
+    private displayCostSummary(): void {
+        this.log(chalk.bold('\n💰 Cost Summary\n'));
+        this.log(chalk.white(`  Session Cost:   ${chalk.yellow('$' + this.sessionCost.toFixed(4))}`));
+        this.log(chalk.white(`  Total Turns:    ${this.sessionTurns}`));
+        this.log(chalk.white(`  Avg per Query:  ${chalk.gray('$' + (this.sessionCost / Math.max(1, this.conversationHistory.length)).toFixed(4))}`));
+        this.log('');
+    }
+
+    /**
      * Handle special commands
      */
     private handleCommand(input: string): boolean {
@@ -280,6 +381,7 @@ export class AgentSession {
             case 'exit':
             case 'quit':
             case 'q':
+                this.displayCostSummary();
                 this.log(chalk.cyan('\nGoodbye! 👋\n'));
                 this.running = false;
                 return true;
@@ -310,11 +412,22 @@ export class AgentSession {
 
             case 'clear':
                 this.conversationHistory = [];
+                this.currentSessionId = null;
+                this.sessionCost = 0;
+                this.sessionTurns = 0;
                 this.log(chalk.green('\n✓ Conversation history cleared\n'));
                 return true;
 
             case 'status':
                 this.displayStatus();
+                return true;
+
+            case 'session':
+                this.displaySessionInfo();
+                return true;
+
+            case 'cost':
+                this.displayCostSummary();
                 return true;
 
             default:
