@@ -10,6 +10,8 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { ProviderConfig, LLMConfig } from '../types';
+import { getStoredToken, getCopilotToken, getAuthStatus } from '../auth';
+import { loadModelConfig } from '../config/model-selector';
 
 export interface ProviderFactory {
   createModel(modelId: string): LanguageModel;
@@ -95,6 +97,109 @@ function createOpenAICompatibleProvider(config: ProviderConfig): ProviderFactory
 }
 
 /**
+ * GitHub Copilot Token Manager
+ * Manages Copilot token lifecycle with automatic refresh
+ */
+class CopilotTokenManager {
+  private copilotToken: string | null = null;
+  private copilotTokenExpiry: number = 0;
+  private githubToken: string | null = null;
+
+  async ensureCopilotToken(): Promise<string> {
+    const now = Date.now();
+
+    // Check if we need to refresh the token (5 min buffer before expiry)
+    if (!this.copilotToken || now >= this.copilotTokenExpiry - 300000) {
+      // Get GitHub token if not cached
+      if (!this.githubToken) {
+        this.githubToken = await getStoredToken();
+        if (!this.githubToken) {
+          throw new Error('Not authenticated with GitHub. Run: cluster-code github login');
+        }
+      }
+
+      // Get new Copilot token
+      this.copilotToken = await getCopilotToken(this.githubToken);
+      // Copilot tokens typically expire after 30 minutes
+      this.copilotTokenExpiry = now + 25 * 60 * 1000;
+    }
+
+    return this.copilotToken;
+  }
+
+  invalidate(): void {
+    this.copilotToken = null;
+    this.copilotTokenExpiry = 0;
+    this.githubToken = null;
+  }
+}
+
+// Singleton token manager for Copilot
+const copilotTokenManager = new CopilotTokenManager();
+
+/**
+ * Create a provider factory for GitHub Copilot
+ * Uses the OpenAI-compatible API with Copilot tokens
+ */
+function createCopilotProviderFactory(config: ProviderConfig): ProviderFactory {
+  return {
+    createModel: (modelId: string) => {
+      // Create a dynamic provider that refreshes tokens as needed
+      // The Copilot API is OpenAI-compatible at api.githubcopilot.com
+      const provider = createOpenAI({
+        // We'll need to provide a token getter that returns fresh tokens
+        // Since the AI SDK expects a static key, we use a custom fetch
+        apiKey: 'copilot-token-placeholder', // Replaced by custom fetch
+        baseURL: 'https://api.githubcopilot.com',
+        // Custom fetch to inject the Copilot token dynamically
+        fetch: async (url, init) => {
+          const token = await copilotTokenManager.ensureCopilotToken();
+          const headers = new Headers(init?.headers);
+          headers.set('Authorization', `Bearer ${token}`);
+          headers.set('User-Agent', 'ClusterCode-CLI');
+          headers.set('Editor-Version', 'vscode/1.85.0');
+          headers.set('Editor-Plugin-Version', 'copilot/1.0.0');
+          
+          return fetch(url, {
+            ...init,
+            headers,
+          });
+        },
+        ...config.options,
+      });
+
+      return provider(modelId);
+    },
+  };
+}
+
+/**
+ * Check if GitHub Copilot is configured and available
+ */
+export async function isCopilotConfigured(): Promise<boolean> {
+  try {
+    const authStatus = await getAuthStatus();
+    return authStatus.authenticated && authStatus.tokenValid === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get the configured Copilot model from model-selector config
+ */
+export function getCopilotModelConfig(): { provider: string; model: string } | null {
+  const modelConfig = loadModelConfig();
+  if (modelConfig && modelConfig.provider === 'copilot') {
+    return {
+      provider: 'copilot',
+      model: modelConfig.model,
+    };
+  }
+  return null;
+}
+
+/**
  * Provider Manager
  *
  * Manages LLM providers and creates model instances
@@ -138,6 +243,14 @@ export class ProviderManager {
         apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
       };
     }
+
+    // Add default Copilot provider (will be validated on use)
+    if (!this.providerConfigs['copilot']) {
+      this.providerConfigs['copilot'] = {
+        type: 'copilot',
+        name: 'GitHub Copilot',
+      };
+    }
   }
 
   /**
@@ -169,6 +282,10 @@ export class ProviderManager {
 
       case 'google':
         factory = createGoogleProvider(config);
+        break;
+
+      case 'copilot':
+        factory = createCopilotProviderFactory(config);
         break;
 
       case 'ollama':
@@ -227,9 +344,20 @@ export class ProviderManager {
 
 /**
  * Get default LLM configuration
+ * Priority: Copilot (if configured) > Anthropic > OpenAI > Google
  */
 export function getDefaultLLMConfig(): LLMConfig {
-  // Try Anthropic first
+  // Check if Copilot is configured via model-selector
+  const copilotConfig = getCopilotModelConfig();
+  if (copilotConfig) {
+    return {
+      provider: 'copilot',
+      model: copilotConfig.model,
+      maxTokens: 4096,
+    };
+  }
+
+  // Try Anthropic
   if (process.env.ANTHROPIC_API_KEY) {
     return {
       provider: 'anthropic',
@@ -256,10 +384,32 @@ export function getDefaultLLMConfig(): LLMConfig {
     };
   }
 
-  // Default to Anthropic (will fail later if no API key)
+  // Default to Copilot with gpt-4o (will require authentication)
   return {
-    provider: 'anthropic',
-    model: 'claude-3-5-sonnet-20241022',
+    provider: 'copilot',
+    model: 'gpt-4o',
     maxTokens: 4096,
   };
+}
+
+/**
+ * Get LLM configuration with async Copilot check
+ * Use this when you need to verify Copilot is actually available
+ */
+export async function getDefaultLLMConfigAsync(): Promise<LLMConfig> {
+  // Check if Copilot is configured and authenticated
+  const copilotConfig = getCopilotModelConfig();
+  if (copilotConfig) {
+    const isAvailable = await isCopilotConfigured();
+    if (isAvailable) {
+      return {
+        provider: 'copilot',
+        model: copilotConfig.model,
+        maxTokens: 4096,
+      };
+    }
+  }
+
+  // Fall back to sync version
+  return getDefaultLLMConfig();
 }

@@ -3,6 +3,10 @@
  * 
  * Client for interacting with the Claude Agent SDK for agentic Kubernetes operations
  * Enhanced with session management, hooks, and improved streaming support
+ * 
+ * This client automatically selects between:
+ * - Claude Agent SDK (when using Anthropic API directly)
+ * - Copilot Agent (when using GitHub Copilot with any model)
  */
 
 import { 
@@ -20,6 +24,8 @@ import {
 } from '@anthropic-ai/claude-agent-sdk';
 import { createKubernetesMcpServer, getKubernetesToolNames } from './mcp-kubernetes';
 import { configManager } from '../config';
+import { getCopilotModelConfig, isCopilotConfigured } from '../llm';
+import { CopilotAgent, CopilotAgentOptions } from './copilot-agent';
 
 /**
  * Subagent definitions for specialized Kubernetes operations
@@ -403,26 +409,65 @@ function createSecurityHook(options: AgentClientOptions): HookCallback {
 /**
  * Agent SDK Client for agentic Kubernetes operations
  * Enhanced with session management, hooks, permissions, and streaming support
+ * 
+ * Supports two backends:
+ * - Claude Agent SDK (for direct Anthropic API usage)
+ * - Copilot Agent (for GitHub Copilot with any model)
  */
 export class AgentClient {
     private options: AgentClientOptions;
     private abortController: AbortController | null = null;
     private currentSessionId: string | null = null;
+    private copilotAgent: CopilotAgent | null = null;
+    private usingCopilot: boolean = false;
 
     constructor(options: AgentClientOptions = {}) {
         this.options = options;
     }
 
     /**
-     * Check if Claude API key is available
+     * Check if any agent backend is available
+     * Checks both Claude SDK and Copilot configurations
      */
     isConfigured(): boolean {
-        return !!(
+        // Check for Claude SDK configuration
+        const hasClaudeConfig = !!(
             process.env.ANTHROPIC_API_KEY ||
             process.env.CLAUDE_CODE_USE_BEDROCK ||
             process.env.CLAUDE_CODE_USE_VERTEX ||
             process.env.CLAUDE_CODE_USE_FOUNDRY
         );
+
+        // Check for Copilot configuration
+        const copilotConfig = getCopilotModelConfig();
+        const hasCopilotConfig = copilotConfig !== null;
+
+        return hasClaudeConfig || hasCopilotConfig;
+    }
+
+    /**
+     * Check if Copilot should be used as the backend
+     */
+    private shouldUseCopilot(): boolean {
+        // If Copilot is configured, prefer it
+        const copilotConfig = getCopilotModelConfig();
+        if (copilotConfig) {
+            return true;
+        }
+
+        // Fall back to Claude SDK if Anthropic key is available
+        return false;
+    }
+
+    /**
+     * Check if Copilot is available (async version with auth check)
+     */
+    async isCopilotAvailable(): Promise<boolean> {
+        const copilotConfig = getCopilotModelConfig();
+        if (!copilotConfig) {
+            return false;
+        }
+        return await isCopilotConfigured();
     }
 
     /**
@@ -505,14 +550,97 @@ export class AgentClient {
 
     /**
      * Run an agentic query against the cluster
+     * Automatically selects between Claude SDK and Copilot based on configuration
      */
     async runQuery(prompt: string): Promise<{ messages: SDKMessage[]; success: boolean; sessionId?: string }> {
         if (!this.isConfigured()) {
             throw new Error(
-                'Claude API key not configured. Set ANTHROPIC_API_KEY environment variable or use Bedrock/Vertex/Foundry.'
+                'No LLM provider configured. Either:\n' +
+                '  - Run: cluster-code github login (for GitHub Copilot)\n' +
+                '  - Set: ANTHROPIC_API_KEY environment variable\n' +
+                '  - Use: Bedrock/Vertex/Foundry configuration'
             );
         }
 
+        // Check if we should use Copilot
+        if (this.shouldUseCopilot()) {
+            return this.runCopilotQuery(prompt);
+        }
+
+        // Use Claude SDK
+        return this.runClaudeQuery(prompt);
+    }
+
+    /**
+     * Run a query using the Copilot Agent
+     */
+    private async runCopilotQuery(prompt: string): Promise<{ messages: SDKMessage[]; success: boolean; sessionId?: string }> {
+        // Initialize Copilot agent if needed
+        if (!this.copilotAgent) {
+            this.copilotAgent = new CopilotAgent({
+                autoExecute: this.options.autoExecute,
+                planMode: this.options.planMode,
+                verbose: this.options.verbose,
+                customPrompt: this.options.customPrompt,
+                workingDirectory: this.options.workingDirectory,
+                maxTurns: this.options.maxTurns,
+                onMessage: (content) => {
+                    // Convert string content to SDK-like message for callback
+                    if (this.options.onMessage) {
+                        const sdkMessage: SDKMessage = {
+                            type: 'assistant',
+                            message: {
+                                content: [{ type: 'text', text: content }],
+                            },
+                        } as any;
+                        this.options.onMessage(sdkMessage);
+                    }
+                },
+                onSessionStart: this.options.onSessionStart,
+                onSessionEnd: (result) => {
+                    if (this.options.onSessionEnd) {
+                        const sdkResult: SDKResultMessage = {
+                            type: 'result',
+                            subtype: result.success ? 'success' : 'error_during_execution',
+                            num_turns: result.turns,
+                        } as any;
+                        this.options.onSessionEnd(sdkResult);
+                    }
+                },
+            });
+            await this.copilotAgent.initialize();
+        }
+
+        this.usingCopilot = true;
+        const messages: SDKMessage[] = [];
+        
+        try {
+            const result = await this.copilotAgent.runQuery(prompt);
+            
+            // Convert response to SDK-like message format
+            if (result.response) {
+                messages.push({
+                    type: 'assistant',
+                    message: {
+                        content: [{ type: 'text', text: result.response }],
+                    },
+                } as any);
+            }
+
+            return {
+                messages,
+                success: result.success,
+                sessionId: this.copilotAgent.getSessionId(),
+            };
+        } catch (error: any) {
+            throw error;
+        }
+    }
+
+    /**
+     * Run a query using the Claude Agent SDK
+     */
+    private async runClaudeQuery(prompt: string): Promise<{ messages: SDKMessage[]; success: boolean; sessionId?: string }> {
         // Create Kubernetes MCP server
         const kubernetesServer = createKubernetesMcpServer();
 
@@ -660,6 +788,27 @@ export class AgentClient {
         if (this.abortController) {
             this.abortController.abort();
         }
+        if (this.copilotAgent) {
+            this.copilotAgent.abort();
+        }
+    }
+
+    /**
+     * Check if currently using Copilot backend
+     */
+    isUsingCopilot(): boolean {
+        return this.usingCopilot;
+    }
+
+    /**
+     * Get the current backend name
+     */
+    getBackendName(): string {
+        if (this.usingCopilot) {
+            const config = getCopilotModelConfig();
+            return `GitHub Copilot (${config?.model || 'gpt-4o'})`;
+        }
+        return 'Claude Agent SDK';
     }
 
     /**

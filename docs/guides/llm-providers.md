@@ -25,6 +25,7 @@ Configure Cluster Code to work with your preferred AI provider - from cloud-base
 
 Cluster Code supports multiple LLM providers through the [Vercel AI SDK](https://ai-sdk.dev), giving you flexibility in choosing between:
 
+- **GitHub Copilot** - Access multiple models (GPT-4o, Claude, Gemini) via your GitHub account **(Recommended)**
 - **Cloud Providers** - Anthropic, OpenAI, Google (powerful, but sends data externally)
 - **Local Models** - Ollama, LM Studio (complete privacy, no API costs)
 - **Custom Providers** - Any OpenAI-compatible endpoint
@@ -36,9 +37,25 @@ At least one LLM provider must be configured for Cluster Code to function. Choos
 
 ## Quick Setup
 
-### Using Environment Variables (Easiest)
+### Using GitHub Copilot (Recommended)
 
-The fastest way to get started is using environment variables:
+The easiest way to get started is with GitHub Copilot:
+
+```bash
+# Authenticate with GitHub
+cluster-code github login
+
+# Select your preferred model
+cluster-code github model
+```
+
+This gives you access to GPT-4o, Claude, Gemini, o1, and more through a single authentication.
+
+See the [GitHub Copilot Setup Guide](/guides/github-copilot-setup) for detailed instructions.
+
+### Using Environment Variables
+
+For direct API access, use environment variables:
 
 ```bash
 # Anthropic (Claude)

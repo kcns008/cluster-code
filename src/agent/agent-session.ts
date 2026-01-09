@@ -274,9 +274,11 @@ export class AgentSession {
      * Display welcome message
      */
     private displayWelcome(): void {
+        const backendName = this.client.getBackendName();
+        
         this.log(chalk.bold.cyan('\n╔═══════════════════════════════════════════════════════╗'));
         this.log(chalk.bold.cyan('║           Cluster Code - Agent Mode                   ║'));
-        this.log(chalk.bold.cyan('║         Powered by Claude Agent SDK                   ║'));
+        this.log(chalk.bold.cyan(`║         Powered by ${backendName.padEnd(35)}║`));
         this.log(chalk.bold.cyan('╚═══════════════════════════════════════════════════════╝\n'));
 
         this.log(chalk.white('I can help you manage and troubleshoot your Kubernetes cluster.'));
@@ -494,11 +496,12 @@ export class AgentSession {
     async start(): Promise<void> {
         // Check if configured
         if (!this.isAvailable()) {
-            this.log(chalk.red('\n❌ Agent mode requires Claude API key.\n'));
-            this.log(chalk.white('Set one of:'));
-            this.log(chalk.gray('  export ANTHROPIC_API_KEY=your-key'));
-            this.log(chalk.gray('  export CLAUDE_CODE_USE_BEDROCK=1 (with AWS credentials)'));
-            this.log(chalk.gray('  export CLAUDE_CODE_USE_VERTEX=1 (with Google Cloud credentials)\n'));
+            this.log(chalk.red('\n❌ Agent mode requires an LLM provider.\n'));
+            this.log(chalk.white('Configure one of:'));
+            this.log(chalk.gray('  cluster-code github login    (GitHub Copilot - recommended)'));
+            this.log(chalk.gray('  export ANTHROPIC_API_KEY=... (Anthropic Claude)'));
+            this.log(chalk.gray('  export CLAUDE_CODE_USE_BEDROCK=1 (AWS Bedrock)'));
+            this.log(chalk.gray('  export CLAUDE_CODE_USE_VERTEX=1 (Google Cloud Vertex)\n'));
             return;
         }
 

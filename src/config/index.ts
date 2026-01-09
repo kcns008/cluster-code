@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { ClusterCodeConfig, ClusterConfig, LLMConfig, ProviderConfig } from '../types';
 import { getDefaultLLMConfig } from '../llm';
+import { loadModelConfig } from './model-selector';
 
 const CONFIG_DIR = path.join(process.env.HOME || process.env.USERPROFILE || '', '.cluster-code');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -163,8 +164,21 @@ export class ConfigManager {
 
   /**
    * Get LLM configuration
+   * Priority: Copilot (via model-selector) > Configured LLM > Default
    */
   getLLMConfig(): LLMConfig {
+    // Check for Copilot configuration first
+    const copilotConfig = loadModelConfig();
+    if (copilotConfig && copilotConfig.provider === 'copilot') {
+      return {
+        provider: 'copilot',
+        model: copilotConfig.model,
+        maxTokens: copilotConfig.default_max_tokens || 4096,
+        temperature: copilotConfig.temperature,
+      };
+    }
+
+    // Fall back to configured LLM or default
     return this.config.llm || getDefaultLLMConfig();
   }
 
@@ -242,9 +256,16 @@ export class ConfigManager {
 
   /**
    * Check if LLM is configured
+   * Returns true if any LLM provider is available (including Copilot)
    */
   isLLMConfigured(): boolean {
     try {
+      // Check for Copilot configuration
+      const copilotConfig = loadModelConfig();
+      if (copilotConfig && copilotConfig.provider === 'copilot') {
+        return true;
+      }
+
       const llmConfig = this.getLLMConfig();
       const providers = this.getProviders();
       const provider = providers[llmConfig.provider];
@@ -258,6 +279,10 @@ export class ConfigManager {
           return true;
         }
         if (llmConfig.provider === 'google' && process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+          return true;
+        }
+        if (llmConfig.provider === 'copilot') {
+          // Copilot is configured via model-selector, not providers
           return true;
         }
         return false;

@@ -16,6 +16,37 @@ description: |
 
 # Kubernetes / OpenShift Security Guide
 
+## Current Versions & Security Tools (January 2026)
+
+| Tool | Version | Purpose | Documentation |
+|------|---------|---------|---------------|
+| **Trivy** | 0.58.x | Vulnerability scanning | https://aquasecurity.github.io/trivy/ |
+| **Kyverno** | 1.13.x | Policy engine | https://kyverno.io/ |
+| **OPA Gatekeeper** | 3.18.x | Policy engine | https://open-policy-agent.github.io/gatekeeper/ |
+| **Falco** | 0.39.x | Runtime security | https://falco.org/ |
+| **kube-bench** | 0.8.x | CIS benchmarks | https://github.com/aquasecurity/kube-bench |
+| **kubescape** | 3.0.x | Security posture | https://kubescape.io/ |
+| **External Secrets** | 0.12.x | Secret management | https://external-secrets.io/ |
+| **Sealed Secrets** | 0.27.x | GitOps secrets | https://sealed-secrets.netlify.app/ |
+
+### Security Tool Installation
+
+```bash
+# Trivy - Vulnerability scanner
+brew install trivy
+# OR
+curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+# Kyverno CLI
+brew install kyverno
+
+# kubescape - Comprehensive security scanner
+curl -s https://raw.githubusercontent.com/kubescape/kubescape/master/install.sh | /bin/bash
+
+# kube-bench - CIS benchmarks
+kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job.yaml
+```
+
 ## Command Usage Convention
 
 **IMPORTANT**: This skill uses `kubectl` as the primary command in all examples. When working with:
@@ -34,13 +65,17 @@ Comprehensive security assessment, hardening, and compliance for cluster-code ma
 4. **Remediate**: Apply hardening based on priority
 5. **Monitor**: Continuous compliance verification
 
-## Pod Security Standards (PSS)
+## Pod Security Standards (PSS) - Kubernetes 1.31
+
+**Documentation**: https://kubernetes.io/docs/concepts/security/pod-security-standards/
+
+Pod Security Admission (PSA) is now the standard for pod security in Kubernetes 1.31+, having fully replaced the deprecated PodSecurityPolicy.
 
 ### Levels
 
 | Level | Description | Use Case |
 |-------|-------------|----------|
-| `privileged` | Unrestricted | System workloads only |
+| `privileged` | Unrestricted policy | System workloads only |
 | `baseline` | Minimally restrictive | Standard workloads |
 | `restricted` | Heavily restricted | Security-sensitive workloads |
 
@@ -307,6 +342,22 @@ resources:
 
 ### External Secrets Operator
 
+**Current Version: v0.12.x (January 2026)**
+
+**Documentation**: https://external-secrets.io/
+
+```bash
+# Install External Secrets Operator
+helm repo add external-secrets https://charts.external-secrets.io
+helm repo update
+
+helm install external-secrets external-secrets/external-secrets \
+  --namespace external-secrets \
+  --create-namespace \
+  --set installCRDs=true \
+  --set webhook.port=9443
+```
+
 ```yaml
 # ClusterSecretStore for HashiCorp Vault
 apiVersion: external-secrets.io/v1beta1
@@ -353,13 +404,34 @@ spec:
 
 ### Sealed Secrets (GitOps-friendly)
 
+**Current Version: v0.27.x (January 2026)**
+
+**Documentation**: https://sealed-secrets.netlify.app/
+
 ```bash
+# Install Sealed Secrets controller
+helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
+helm install sealed-secrets sealed-secrets/sealed-secrets \
+  --namespace kube-system \
+  --set fullnameOverride=sealed-secrets-controller
+
 # Install kubeseal CLI
-# Create sealed secret
+brew install kubeseal
+# OR
+wget https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.27.0/kubeseal-0.27.0-linux-amd64.tar.gz
+
+# Create sealed secret from existing secret
 kubeseal --format=yaml < secret.yaml > sealed-secret.yaml
+
+# Create sealed secret with specific scope
+kubeseal --format=yaml --scope cluster-wide < secret.yaml > sealed-secret.yaml
+kubeseal --format=yaml --scope namespace-wide < secret.yaml > sealed-secret.yaml
 
 # Apply sealed secret (controller decrypts it)
 kubectl apply -f sealed-secret.yaml
+
+# Rotate secrets (re-encrypt with new key)
+kubeseal --recovery-unseal --recovery-private-key backup-key.pem < sealed-secret.yaml
 ```
 
 ```yaml
@@ -482,6 +554,82 @@ volumes:
 ## Image Security
 
 ### Image Scanning Integration
+
+**Trivy v0.58.x (January 2026)** - Industry-standard vulnerability scanner
+
+```bash
+# Basic vulnerability scan
+trivy image ${IMAGE}:${TAG}
+
+# Scan with severity filter
+trivy image --severity HIGH,CRITICAL ${IMAGE}:${TAG}
+
+# Scan for misconfigurations (Dockerfile, K8s manifests)
+trivy config .
+trivy fs --scanners misconfig .
+
+# Output as JSON for CI/CD processing
+trivy image -f json -o results.json ${IMAGE}:${TAG}
+
+# Output as SARIF for GitHub Security
+trivy image -f sarif -o trivy-results.sarif ${IMAGE}:${TAG}
+
+# Scan with SBOM generation (Software Bill of Materials)
+trivy image --format spdx-json -o sbom.json ${IMAGE}:${TAG}
+
+# Scan Kubernetes cluster for vulnerabilities
+trivy k8s --report summary cluster
+
+# Scan specific namespace
+trivy k8s -n ${NAMESPACE} --report all
+
+# Generate compliance report
+trivy k8s cluster --compliance k8s-cis-1.8
+trivy k8s cluster --compliance k8s-nsa-1.0
+
+# Use in CI/CD (fail on HIGH/CRITICAL)
+trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE}:${TAG}
+```
+
+### Trivy Operator (Continuous Scanning in Cluster)
+
+```bash
+# Install Trivy Operator via Helm
+helm repo add aqua https://aquasecurity.github.io/helm-charts/
+helm repo update
+
+helm install trivy-operator aqua/trivy-operator \
+  --namespace trivy-system \
+  --create-namespace \
+  --set trivy.ignoreUnfixed=true \
+  --set operator.scanJobTimeout=10m
+
+# View vulnerability reports
+kubectl get vulnerabilityreports -A
+kubectl get configauditreports -A
+kubectl get exposedsecretreports -A
+
+# Get summary
+kubectl get vulnerabilityreports -A -o json | jq -r '
+  .items[] | 
+  "\(.metadata.namespace)/\(.metadata.name): Critical=\(.report.summary.criticalCount) High=\(.report.summary.highCount)"'
+```
+
+### Additional Scanning Tools
+
+```bash
+# kubescape - Comprehensive security posture
+kubescape scan framework nsa --submit --account ${ACCOUNT_ID}
+kubescape scan framework mitre
+kubescape scan framework cis-v1.23-t1.0.1
+
+# Grype (Anchore) - Alternative vulnerability scanner
+grype ${IMAGE}:${TAG}
+grype dir:/path/to/project
+
+# Syft - SBOM generator
+syft ${IMAGE}:${TAG} -o spdx-json > sbom.spdx.json
+```
 
 ```yaml
 # Trivy Operator - Automatic vulnerability scanning
@@ -629,6 +777,46 @@ kubectl get clusterrolebindings -o json | jq -r '
 ```
 
 ## CIS Benchmark Checks
+
+**Current CIS Benchmarks (January 2026):**
+- **CIS Kubernetes Benchmark v1.9.0** (for K8s 1.27-1.31)
+- **CIS Amazon EKS Benchmark v1.5.0**
+- **CIS Azure AKS Benchmark v1.4.0**
+- **CIS Google GKE Benchmark v1.6.0**
+- **CIS Red Hat OpenShift Benchmark v1.6.0**
+
+### Automated CIS Scanning
+
+```bash
+# Using kube-bench (v0.8.x)
+# Run as a Job in cluster
+kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job.yaml
+kubectl logs job/kube-bench
+
+# Run locally with Docker
+docker run --pid=host -v /etc:/etc:ro -v /var:/var:ro \
+  -v $(which kubectl):/usr/local/bin/kubectl \
+  -v ~/.kube:/root/.kube \
+  aquasec/kube-bench:latest --benchmark cis-1.9
+
+# EKS-specific benchmark
+docker run --pid=host aquasec/kube-bench:latest run --targets node --benchmark eks-1.5.0
+
+# GKE-specific benchmark
+docker run --pid=host aquasec/kube-bench:latest run --benchmark gke-1.6.0
+
+# AKS-specific benchmark
+docker run --pid=host aquasec/kube-bench:latest run --benchmark aks-1.4.0
+
+# OpenShift Compliance Operator
+oc get compliancescan -n openshift-compliance
+oc get compliancecheckresult -n openshift-compliance
+oc get complianceremediation -n openshift-compliance
+
+# Using kubescape
+kubescape scan framework cis-v1.23-t1.0.1 --submit --account ${ACCOUNT_ID}
+kubescape scan control 1.1.1,1.2.1,1.2.2  # Specific controls
+```
 
 ### Key Control Plane Checks
 

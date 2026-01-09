@@ -2,6 +2,20 @@
 
 Cluster Code supports multiple LLM providers through the [Vercel AI SDK](https://ai-sdk.dev), enabling you to choose the best model for your needs - whether that's cloud-based services or local, privacy-focused models.
 
+## Quick Start with GitHub Copilot (Recommended)
+
+The easiest way to get started is with GitHub Copilot, which provides access to multiple models through your existing GitHub account:
+
+```bash
+# Authenticate with GitHub
+cluster-code github login
+
+# Select your preferred model
+cluster-code github model
+```
+
+See the [GitHub Copilot Setup Guide](/guides/github-copilot-setup) for detailed instructions and PAT permissions.
+
 ## Why Multiple Providers?
 
 - **Choice**: Use your preferred LLM provider
@@ -16,6 +30,7 @@ Cluster Code supports multiple LLM providers through the [Vercel AI SDK](https:/
 
 | Provider | Models | API Key Required | Best For |
 |----------|--------|------------------|----------|
+| **GitHub Copilot** | GPT-4o, Claude, Gemini, o1 | GitHub PAT with `copilot` scope | Multi-model access via GitHub |
 | **Anthropic** | Claude 3.5 Sonnet, Claude 3 Opus | Yes | Complex reasoning, long context |
 | **OpenAI** | GPT-4, GPT-3.5 Turbo | Yes | General purpose, good balance |
 | **Google** | Gemini 1.5 Pro, Gemini Flash | Yes | Fast responses, cost-effective |
