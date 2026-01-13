@@ -76,14 +76,22 @@ async function setupCopilot(): Promise<{ success: boolean; user?: GitHubUser; mo
 
   if (!oauthResult.success) {
     console.log(chalk.yellow('\n⚠️  OAuth authentication failed.'));
-    console.log(chalk.gray('You can try entering your token manually.\n'));
+    console.log(chalk.gray('You can try entering your Personal Access Token (PAT) manually.\n'));
+    
+    console.log(chalk.cyan('📝 Creating a GitHub Personal Access Token:\n'));
+    console.log(chalk.white('   1. Visit: ') + chalk.cyan('https://github.com/settings/tokens'));
+    console.log(chalk.white('   2. Click "Generate new token" → "Fine-grained token" or "Classic"'));
+    console.log(chalk.white('   3. Required scopes:'));
+    console.log(chalk.white('      ✅ ') + chalk.bold('copilot') + chalk.gray(' - Access GitHub Copilot API'));
+    console.log(chalk.white('      ✅ ') + chalk.bold('user:email') + chalk.gray(' - Read user email'));
+    console.log(chalk.white('   4. Copy the generated token\n'));
 
     // Prompt for manual token
     const { useManual } = await inquirer.prompt<{ useManual: boolean }>([
       {
         type: 'confirm',
         name: 'useManual',
-        message: 'Would you like to enter a GitHub token manually?',
+        message: 'Do you have a GitHub PAT with the required scopes?',
         default: true,
       },
     ]);
@@ -93,11 +101,17 @@ async function setupCopilot(): Promise<{ success: boolean; user?: GitHubUser; mo
         {
           type: 'password',
           name: 'token',
-          message: 'Enter your GitHub personal access token:',
+          message: 'Enter your GitHub Personal Access Token:',
           mask: '*',
           validate: (input) => {
-            if (!input || input.length < 10) {
-              return 'Please enter a valid token';
+            if (!input || input.trim().length === 0) {
+              return 'Token cannot be empty';
+            }
+            if (input.length < 20) {
+              return 'Token appears too short. GitHub tokens are typically 40+ characters';
+            }
+            if (!input.startsWith('ghp_') && !input.startsWith('github_pat_')) {
+              return 'Token should start with "ghp_" (classic) or "github_pat_" (fine-grained)';
             }
             return true;
           },

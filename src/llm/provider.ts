@@ -114,14 +114,34 @@ class CopilotTokenManager {
       if (!this.githubToken) {
         this.githubToken = await getStoredToken();
         if (!this.githubToken) {
-          throw new Error('Not authenticated with GitHub. Run: cluster-code github login');
+          throw new Error(
+            'Not authenticated with GitHub Copilot.\\n' +
+            'Please authenticate first:\\n' +
+            '  - Run: cluster-code github login\\n' +
+            '  - Or set token: cluster-code github token <YOUR_PAT>\\n' +
+            '\\nYour PAT must have the \"copilot\" scope.\\n' +
+            'Create one at: https://github.com/settings/tokens'
+          );
         }
       }
 
-      // Get new Copilot token
-      this.copilotToken = await getCopilotToken(this.githubToken);
-      // Copilot tokens typically expire after 30 minutes
-      this.copilotTokenExpiry = now + 25 * 60 * 1000;
+      try {
+        // Get new Copilot token
+        this.copilotToken = await getCopilotToken(this.githubToken);
+        // Copilot tokens typically expire after 30 minutes
+        this.copilotTokenExpiry = now + 25 * 60 * 1000;
+      } catch (error: any) {
+        // Clear cached token on error
+        this.githubToken = null;
+        throw new Error(
+          `Failed to get Copilot token: ${error.message}\\n` +
+          'Please ensure:\\n' +
+          '  1. You have an active GitHub Copilot subscription\\n' +
+          '  2. Your token has the \"copilot\" scope\\n' +
+          '  3. Your token has not expired\\n' +
+          '\\nRe-authenticate with: cluster-code github login'
+        );
+      }
     }
 
     return this.copilotToken;
@@ -140,6 +160,7 @@ const copilotTokenManager = new CopilotTokenManager();
 /**
  * Create a provider factory for GitHub Copilot
  * Uses the OpenAI-compatible API with Copilot tokens
+ * Endpoint: https://api.githubcopilot.com
  */
 function createCopilotProviderFactory(config: ProviderConfig): ProviderFactory {
   return {

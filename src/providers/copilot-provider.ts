@@ -9,6 +9,11 @@ import ora from 'ora';
 import { getStoredToken, getCopilotToken, testCopilotConnection } from '../auth';
 import { logger } from '../utils/logger';
 
+// GitHub Copilot API endpoints
+const COPILOT_API_BASE = 'https://api.githubcopilot.com';
+const COPILOT_MODELS_ENDPOINT = `${COPILOT_API_BASE}/models`;
+const COPILOT_CHAT_COMPLETIONS_ENDPOINT = `${COPILOT_API_BASE}/chat/completions`;
+
 export interface CopilotModel {
   id: string;
   name: string;
@@ -113,7 +118,7 @@ export async function fetchCopilotModels(): Promise<CopilotModel[]> {
     const copilotToken = await getCopilotToken(githubToken);
 
     // Fetch models from API
-    const response = await fetch('https://api.githubcopilot.com/models', {
+    const response = await fetch(COPILOT_MODELS_ENDPOINT, {
       headers: {
         'Authorization': `Bearer ${copilotToken}`,
         'Accept': 'application/json',
@@ -125,9 +130,12 @@ export async function fetchCopilotModels(): Promise<CopilotModel[]> {
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error('Copilot token expired. Please re-authenticate.');
+        throw new Error('Copilot token expired or invalid. Please re-authenticate: cluster-code github login');
       }
-      throw new Error(`Failed to fetch models: ${response.statusText}`);
+      if (response.status === 403) {
+        throw new Error('No access to GitHub Copilot. Ensure you have an active Copilot subscription.');
+      }
+      throw new Error(`Failed to fetch models (${response.status}): ${response.statusText}`);
     }
 
     const data = await response.json() as CopilotModelListResponse;
@@ -214,7 +222,7 @@ export class CopilotProvider {
   }): Promise<AsyncGenerator<string> | string> {
     const token = await this.ensureCopilotToken();
 
-    const response = await fetch('https://api.githubcopilot.com/chat/completions', {
+    const response = await fetch(COPILOT_CHAT_COMPLETIONS_ENDPOINT, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

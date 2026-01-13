@@ -46,18 +46,24 @@ export async function setGitHubTokenCommand(token: string): Promise<void> {
       console.log(chalk.gray(`   Authenticated as: @${result.user.login}`));
     }
 
-    // Prompt for model selection
-    const { selectNow } = await inquirer.prompt<{ selectNow: boolean }>([
-      {
-        type: 'confirm',
-        name: 'selectNow',
-        message: 'Would you like to select a model now?',
-        default: true,
-      },
-    ]);
-
-    if (selectNow) {
-      await configureModelCommand();
+    // Always prompt for model selection after successful token setup
+    console.log(chalk.cyan('\n📦 Now let\\'s select a model...\n'));
+    
+    try {
+      const selectedModel = await selectModel({ showHeader: true });
+      
+      if (selectedModel) {
+        setModel(selectedModel, true);
+        console.log(chalk.green(`\n✅ All set! GitHub Copilot is ready to use.\n`));
+      } else {
+        // Use default if user cancels
+        setModel('gpt-4o', true);
+        console.log(chalk.yellow('\n⚠️  No model selected. Using default: gpt-4o\n'));
+      }
+    } catch (error) {
+      // Fallback to default
+      setModel('gpt-4o', true);
+      console.log(chalk.yellow('\n⚠️  Model selection failed. Using default: gpt-4o\n'));
     }
   } else {
     console.log(chalk.red('\n❌ Failed to set token'));
