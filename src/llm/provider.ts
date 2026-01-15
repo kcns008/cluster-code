@@ -10,7 +10,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { ProviderConfig, LLMConfig } from '../types';
-import { getStoredToken, getCopilotToken, getAuthStatus } from '../auth';
+import { getCopilotAccessToken, testCopilotAuth } from '../auth';
 import { loadModelConfig } from '../config/model-selector';
 
 export interface ProviderFactory {
@@ -97,60 +97,24 @@ function createOpenAICompatibleProvider(config: ProviderConfig): ProviderFactory
 }
 
 /**
- * GitHub Copilot Token Manager
- * Manages Copilot token lifecycle with automatic refresh
+ * Copilot Token Manager
+ * Manages OAuth tokens for GitHub Copilot API
  */
 class CopilotTokenManager {
-  private copilotToken: string | null = null;
-  private copilotTokenExpiry: number = 0;
-  private githubToken: string | null = null;
-
-  async ensureCopilotToken(): Promise<string> {
-    const now = Date.now();
-
-    // Check if we need to refresh the token (5 min buffer before expiry)
-    if (!this.copilotToken || now >= this.copilotTokenExpiry - 300000) {
-      // Get GitHub token if not cached
-      if (!this.githubToken) {
-        this.githubToken = await getStoredToken();
-        if (!this.githubToken) {
-          throw new Error(
-            'Not authenticated with GitHub Copilot.\\n' +
-            'Please authenticate first:\\n' +
-            '  - Run: cluster-code github login\\n' +
-            '  - Or set token: cluster-code github token <YOUR_PAT>\\n' +
-            '\\nYour PAT must have the \"copilot\" scope.\\n' +
-            'Create one at: https://github.com/settings/tokens'
-          );
-        }
-      }
-
-      try {
-        // Get new Copilot token
-        this.copilotToken = await getCopilotToken(this.githubToken);
-        // Copilot tokens typically expire after 30 minutes
-        this.copilotTokenExpiry = now + 25 * 60 * 1000;
-      } catch (error: any) {
-        // Clear cached token on error
-        this.githubToken = null;
-        throw new Error(
-          `Failed to get Copilot token: ${error.message}\\n` +
-          'Please ensure:\\n' +
-          '  1. You have an active GitHub Copilot subscription\\n' +
-          '  2. Your token has the \"copilot\" scope\\n' +
-          '  3. Your token has not expired\\n' +
-          '\\nRe-authenticate with: cluster-code github login'
-        );
-      }
+  async ensureCopilotToken(): Promise<{ token: string; baseUrl: string }> {
+    // Try to get a valid access token
+    const tokenData = await getCopilotAccessToken();
+    
+    if (!tokenData) {
+      throw new Error(
+        'Not authenticated with GitHub Copilot.\n' +
+        'Please authenticate first:\n' +
+        '  - Run: cluster-code github login\n' +
+        '\nThis will open a browser for GitHub authentication.'
+      );
     }
 
-    return this.copilotToken;
-  }
-
-  invalidate(): void {
-    this.copilotToken = null;
-    this.copilotTokenExpiry = 0;
-    this.githubToken = null;
+    return tokenData;
   }
 }
 
@@ -159,29 +123,55 @@ const copilotTokenManager = new CopilotTokenManager();
 
 /**
  * Create a provider factory for GitHub Copilot
- * Uses the OpenAI-compatible API with Copilot tokens
- * Endpoint: https://api.githubcopilot.com
+ * Uses OAuth device flow with the real Copilot API (api.githubcopilot.com)
  */
 function createCopilotProviderFactory(config: ProviderConfig): ProviderFactory {
   return {
     createModel: (modelId: string) => {
-      // Create a dynamic provider that refreshes tokens as needed
-      // The Copilot API is OpenAI-compatible at api.githubcopilot.com
+      // Create a dynamic provider that uses Copilot OAuth tokens
       const provider = createOpenAI({
-        // We'll need to provide a token getter that returns fresh tokens
-        // Since the AI SDK expects a static key, we use a custom fetch
-        apiKey: 'copilot-token-placeholder', // Replaced by custom fetch
-        baseURL: 'https://api.githubcopilot.com',
-        // Custom fetch to inject the Copilot token dynamically
+        apiKey: 'copilot-oauth-placeholder', // Replaced by custom fetch
+        baseURL: 'https://api.githubcopilot.com', // Will be updated per-request
+        // Custom fetch to inject the Copilot OAuth token
         fetch: async (url, init) => {
-          const token = await copilotTokenManager.ensureCopilotToken();
+          const { token, baseUrl } = await copilotTokenManager.ensureCopilotToken();
           const headers = new Headers(init?.headers);
+          
+          // Set Copilot-specific headers (matching OpenCode's approach)
           headers.set('Authorization', `Bearer ${token}`);
           headers.set('User-Agent', 'ClusterCode-CLI');
-          headers.set('Editor-Version', 'vscode/1.85.0');
-          headers.set('Editor-Plugin-Version', 'copilot/1.0.0');
+          headers.set('Openai-Intent', 'conversation-edits');
           
-          return fetch(url, {
+          // Determine if this is an agent or user request
+          let isAgent = false;
+          if (init?.body) {
+            try {
+              const body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
+              if (body?.messages?.length > 0) {
+                const lastMessage = body.messages[body.messages.length - 1];
+                isAgent = lastMessage?.role !== 'user';
+              }
+            } catch {
+              // Ignore parsing errors
+            }
+          }
+          headers.set('X-Initiator', isAgent ? 'agent' : 'user');
+
+          // Remove OpenAI-specific headers that might conflict
+          headers.delete('x-api-key');
+
+          // Update URL to use the correct Copilot API base
+          let fixedUrl = url.toString();
+          if (fixedUrl.includes('api.githubcopilot.com/v1/')) {
+            fixedUrl = fixedUrl.replace('/v1/', '/');
+          }
+          // Also handle dynamic base URL (for enterprise)
+          if (!fixedUrl.startsWith(baseUrl)) {
+            const urlPath = new URL(fixedUrl).pathname;
+            fixedUrl = `${baseUrl}${urlPath}`;
+          }
+
+          return fetch(fixedUrl, {
             ...init,
             headers,
           });
@@ -189,7 +179,8 @@ function createCopilotProviderFactory(config: ProviderConfig): ProviderFactory {
         ...config.options,
       });
 
-      return provider(modelId);
+      // Use .chat() for the chat/completions API
+      return provider.chat(modelId);
     },
   };
 }
@@ -199,8 +190,8 @@ function createCopilotProviderFactory(config: ProviderConfig): ProviderFactory {
  */
 export async function isCopilotConfigured(): Promise<boolean> {
   try {
-    const authStatus = await getAuthStatus();
-    return authStatus.authenticated && authStatus.tokenValid === true;
+    const result = await testCopilotAuth();
+    return result.success;
   } catch {
     return false;
   }

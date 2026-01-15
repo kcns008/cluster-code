@@ -25,7 +25,7 @@ import {
 import { createKubernetesMcpServer, getKubernetesToolNames } from './mcp-kubernetes';
 import { configManager } from '../config';
 import { getCopilotModelConfig, isCopilotConfigured } from '../llm';
-import { CopilotAgent, CopilotAgentOptions } from './copilot-agent';
+import { CopilotAgent } from './copilot-agent';
 
 /**
  * Subagent definitions for specialized Kubernetes operations

@@ -15,9 +15,22 @@ const CREDENTIALS_FILE = path.join(CLAUDE_DIR, 'credentials.json');
 const SERVICE_NAME = 'cluster-code';
 const ACCOUNT_NAME = 'github-token';
 
+export interface CopilotOAuthToken {
+  /** OAuth refresh token (used to get access tokens) */
+  refresh_token: string;
+  /** Current access token (short-lived, for API calls) */
+  access_token?: string;
+  /** Access token expiration timestamp */
+  access_expires_at?: number;
+  /** GitHub Enterprise URL (if using enterprise) */
+  enterprise_url?: string;
+}
+
 export interface Credentials {
   provider: 'copilot' | 'anthropic' | 'openai' | 'google';
   github_token?: string;
+  /** OAuth token data for GitHub Copilot */
+  copilot_oauth?: CopilotOAuthToken;
   anthropic_api_key?: string;
   openai_api_key?: string;
   google_api_key?: string;
@@ -303,6 +316,85 @@ export class CredentialStore {
    */
   getCredentialsPath(): string {
     return CREDENTIALS_FILE;
+  }
+
+  /**
+   * Save Copilot OAuth token (device flow authentication)
+   */
+  async saveCopilotOAuth(oauth: CopilotOAuthToken, githubUser?: string): Promise<void> {
+    await this.initialize();
+
+    const credentials = await this.loadCredentialsFile();
+    credentials.provider = 'copilot';
+    credentials.copilot_oauth = {
+      refresh_token: encrypt(oauth.refresh_token),
+      access_token: oauth.access_token ? encrypt(oauth.access_token) : undefined,
+      access_expires_at: oauth.access_expires_at,
+      enterprise_url: oauth.enterprise_url,
+    };
+    credentials.created_at = new Date().toISOString();
+    credentials.expires_at = null;
+    credentials.github_user = githubUser;
+
+    await this.saveCredentialsFile(credentials);
+  }
+
+  /**
+   * Get Copilot OAuth token
+   */
+  async getCopilotOAuth(): Promise<CopilotOAuthToken | null> {
+    const credentials = await this.loadCredentialsFile();
+    
+    if (!credentials.copilot_oauth?.refresh_token) {
+      return null;
+    }
+
+    try {
+      return {
+        refresh_token: decrypt(credentials.copilot_oauth.refresh_token),
+        access_token: credentials.copilot_oauth.access_token 
+          ? decrypt(credentials.copilot_oauth.access_token) 
+          : undefined,
+        access_expires_at: credentials.copilot_oauth.access_expires_at,
+        enterprise_url: credentials.copilot_oauth.enterprise_url,
+      };
+    } catch (error) {
+      logger.debug('Failed to decrypt OAuth token');
+      return null;
+    }
+  }
+
+  /**
+   * Update Copilot access token (called after refresh)
+   */
+  async updateCopilotAccessToken(accessToken: string, expiresAt: number): Promise<void> {
+    const credentials = await this.loadCredentialsFile();
+    
+    if (!credentials.copilot_oauth) {
+      throw new Error('No Copilot OAuth credentials found');
+    }
+
+    credentials.copilot_oauth.access_token = encrypt(accessToken);
+    credentials.copilot_oauth.access_expires_at = expiresAt;
+
+    await this.saveCredentialsFile(credentials);
+  }
+
+  /**
+   * Delete Copilot OAuth credentials
+   */
+  async deleteCopilotOAuth(): Promise<void> {
+    const credentials = await this.loadCredentialsFile();
+    delete credentials.copilot_oauth;
+    await this.saveCredentialsFile(credentials);
+  }
+
+  /**
+   * Check if Copilot OAuth is configured
+   */
+  async hasCopilotOAuth(): Promise<boolean> {
+    const oauth = await this.getCopilotOAuth();
+    return oauth !== null && !!oauth.refresh_token;
   }
 }
 

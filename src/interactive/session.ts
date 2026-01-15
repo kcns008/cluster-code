@@ -5,6 +5,7 @@ import { Logger } from '../utils/logger';
 import { buildCLIContext, generateSystemPrompt, formatCLIContext, CLIContext } from '../utils/cli-context';
 import { ConfigManager } from '../config';
 import { ProviderManager, LLMClient } from '../llm';
+import { setManualToken } from '../auth';
 
 const execAsync = promisify(exec);
 
@@ -81,7 +82,7 @@ export class InteractiveSession {
         const userInput = await this.getUserInput();
 
         // Handle special commands
-        if (this.handleSpecialCommand(userInput)) {
+        if (await this.handleSpecialCommand(userInput)) {
           continue;
         }
 
@@ -130,8 +131,8 @@ export class InteractiveSession {
       {
         type: 'input',
         name: 'input',
-        message: 'You:',
-        prefix: ''
+        message: ' ',
+        prefix: '>>'
       }
     ]);
 
@@ -142,7 +143,13 @@ export class InteractiveSession {
    * Handle special commands like /help, /exit, etc.
    * Returns true if command was handled, false otherwise
    */
-  private handleSpecialCommand(input: string): boolean {
+  private async handleSpecialCommand(input: string): Promise<boolean> {
+    // Handle ? shortcut for help
+    if (input === '?' || input === 'help') {
+      this.displayHelp();
+      return true;
+    }
+
     if (!input.startsWith('/')) {
       return false;
     }
@@ -196,6 +203,22 @@ export class InteractiveSession {
         }
         return true;
 
+      case 'github':
+      case 'gh':
+        if (args.length >= 2 && args[0] === 'token') {
+          await this.setGitHubToken(args[1]);
+        } else if (args.length >= 1 && args[0] === 'login') {
+          this.logger.info('Please run: cluster-code github login (outside interactive mode)');
+        } else {
+          this.logger.info('Usage: /github token <YOUR_PAT> or /github login');
+        }
+        return true;
+
+      case 'login':
+        this.logger.info('Please run: cluster-code github login (outside interactive mode)');
+        this.logger.info('Or use: /github token <YOUR_PAT>');
+        return true;
+
       default:
         this.logger.warning(`Unknown command: /${command}`);
         this.logger.info('Type /help for available commands');
@@ -208,14 +231,16 @@ export class InteractiveSession {
    */
   private displayHelp(): void {
     this.logger.section('Available Commands');
-    this.logger.info('/help, /h          - Show this help message');
-    this.logger.info('/exit, /quit, /q   - Exit interactive mode');
-    this.logger.info('/context, /ctx     - Show current cluster context and available tools');
-    this.logger.info('/clear, /c         - Clear conversation history');
-    this.logger.info('/history           - Show conversation history');
-    this.logger.info('/verbose           - Toggle verbose mode');
-    this.logger.info('/auto, /autoexec   - Toggle auto-execute commands (skip confirmation)');
-    this.logger.info('/exec, /run <cmd>  - Execute a command directly');
+    this.logger.info('/help, /h             - Show this help message');
+    this.logger.info('/exit, /quit, /q      - Exit interactive mode');
+    this.logger.info('/context, /ctx        - Show current cluster context and available tools');
+    this.logger.info('/clear, /c            - Clear conversation history');
+    this.logger.info('/history              - Show conversation history');
+    this.logger.info('/verbose              - Toggle verbose mode');
+    this.logger.info('/auto, /autoexec      - Toggle auto-execute commands (skip confirmation)');
+    this.logger.info('/exec, /run <cmd>     - Execute a command directly');
+    this.logger.info('/github token <PAT>   - Set GitHub Copilot token');
+    this.logger.info('/login                - Show GitHub login instructions');
     this.logger.newline();
   }
 
@@ -419,6 +444,40 @@ export class InteractiveSession {
       }
 
       this.logger.newline();
+    }
+  }
+
+  /**
+   * Set GitHub token from within the interactive session
+   */
+  private async setGitHubToken(token: string): Promise<void> {
+    this.logger.startSpinner('Setting GitHub token...');
+
+    try {
+      const result = await setManualToken(token);
+
+      if (result.success) {
+        this.logger.succeedSpinner('Token saved successfully!');
+        if (result.user) {
+          this.logger.info(`Authenticated as: @${result.user.login}`);
+        }
+        
+        // Reinitialize the LLM client with new credentials
+        const llmConfig = this.configManager.getLLMConfig();
+        const providers = this.configManager.getProviders();
+        const providerManager = new ProviderManager(providers);
+        this.llmClient = new LLMClient(providerManager, llmConfig);
+        
+        this.logger.success('GitHub Copilot is now ready to use!');
+      } else {
+        this.logger.failSpinner('Failed to set token');
+        if (result.error) {
+          this.logger.error(result.error);
+        }
+      }
+    } catch (error: any) {
+      this.logger.failSpinner('Failed to set token');
+      this.logger.error(error.message);
     }
   }
 

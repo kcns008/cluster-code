@@ -7,6 +7,7 @@
 import { generateText, streamText, LanguageModel } from 'ai';
 import { ProviderManager } from './provider';
 import { LLMConfig } from '../types';
+import { CopilotProvider, createCopilotProvider } from '../providers/copilot-provider';
 
 export interface GenerateOptions {
   system?: string;
@@ -25,10 +26,28 @@ export interface StreamOptions extends GenerateOptions {
 export class LLMClient {
   private llmConfig: LLMConfig;
   private model: LanguageModel;
+  private copilotProvider?: CopilotProvider;
+  private copilotInit?: Promise<CopilotProvider>;
 
   constructor(providerManager: ProviderManager, llmConfig: LLMConfig) {
     this.llmConfig = llmConfig;
     this.model = providerManager.createModel(llmConfig);
+  }
+
+  /**
+   * Get or initialize the Copilot provider
+   */
+  private async getCopilotProvider(): Promise<CopilotProvider> {
+    if (this.copilotProvider) {
+      return this.copilotProvider;
+    }
+
+    if (!this.copilotInit) {
+      this.copilotInit = createCopilotProvider(this.llmConfig.model);
+    }
+
+    this.copilotProvider = await this.copilotInit;
+    return this.copilotProvider;
   }
 
   /**
@@ -50,6 +69,26 @@ export class LLMClient {
 
     if (finalMessages.length === 0) {
       throw new Error('Either messages or prompt must be provided');
+    }
+
+    if (this.llmConfig.provider === 'copilot') {
+      const copilotMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
+
+      if (system) {
+        copilotMessages.push({ role: 'system', content: system });
+      }
+
+      copilotMessages.push(...finalMessages);
+
+      const provider = await this.getCopilotProvider();
+      const result = await provider.createChatCompletion({
+        messages: copilotMessages,
+        maxTokens: this.llmConfig.maxTokens,
+        temperature: temperature !== undefined ? temperature : this.llmConfig.temperature,
+        stream: false,
+      });
+
+      return typeof result === 'string' ? result : '';
     }
 
     // Generate text
@@ -82,6 +121,41 @@ export class LLMClient {
 
     if (finalMessages.length === 0) {
       throw new Error('Either messages or prompt must be provided');
+    }
+
+    if (this.llmConfig.provider === 'copilot') {
+      const copilotMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
+
+      if (system) {
+        copilotMessages.push({ role: 'system', content: system });
+      }
+
+      copilotMessages.push(...finalMessages);
+
+      const provider = await this.getCopilotProvider();
+      const result = await provider.createChatCompletion({
+        messages: copilotMessages,
+        maxTokens: this.llmConfig.maxTokens,
+        temperature: temperature !== undefined ? temperature : this.llmConfig.temperature,
+        stream: true,
+      });
+
+      if (typeof result === 'string') {
+        if (onChunk) {
+          onChunk(result);
+        }
+        yield result;
+        return;
+      }
+
+      for await (const chunk of result) {
+        if (onChunk) {
+          onChunk(chunk);
+        }
+        yield chunk;
+      }
+
+      return;
     }
 
     // Stream text

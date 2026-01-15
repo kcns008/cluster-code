@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { fetchCopilotModels, CopilotModel, DEFAULT_COPILOT_MODELS } from '../providers';
+import { fetchCopilotModels, CopilotModel, COPILOT_MODELS } from '../providers';
 import { logger } from '../utils/logger';
 
 const CLAUDE_DIR = path.join(process.env.HOME || process.env.USERPROFILE || '', '.claude');
@@ -101,8 +101,18 @@ export async function selectModel(options?: {
   let models: CopilotModel[];
   try {
     models = await fetchCopilotModels();
+    // If empty (auth failed), fall back to static list
+    if (models.length === 0) {
+      models = COPILOT_MODELS;
+    }
   } catch {
-    models = DEFAULT_COPILOT_MODELS;
+    models = COPILOT_MODELS;
+  }
+
+  // Safety check - ensure we have models
+  if (models.length === 0) {
+    console.log(chalk.red('No models available. Using default model.'));
+    return 'gpt-4o';
   }
 
   // Group models by category
@@ -178,7 +188,7 @@ export async function configureModel(): Promise<ModelConfig | null> {
   }
 
   // Get model info for defaults
-  const modelInfo = DEFAULT_COPILOT_MODELS.find(m => m.id === selectedModel);
+  const modelInfo = COPILOT_MODELS.find(m => m.id === selectedModel);
 
   const config: ModelConfig = {
     provider: 'copilot',
@@ -198,11 +208,11 @@ export async function configureModel(): Promise<ModelConfig | null> {
  * Set model directly (for CLI flag)
  */
 export function setModel(modelId: string, permanent: boolean = false): ModelConfig {
-  const modelInfo = DEFAULT_COPILOT_MODELS.find(m => m.id === modelId);
+  const modelInfo = COPILOT_MODELS.find(m => m.id === modelId);
 
   if (!modelInfo) {
     console.log(chalk.yellow(`⚠️  Unknown model: ${modelId}`));
-    console.log(chalk.gray('Available models: ' + DEFAULT_COPILOT_MODELS.map(m => m.id).join(', ')));
+    console.log(chalk.gray('Available models: ' + COPILOT_MODELS.map(m => m.id).join(', ')));
   }
 
   const config: ModelConfig = {
@@ -279,6 +289,6 @@ export function getCurrentModel(): string | null {
  * Get model display name
  */
 export function getModelDisplayName(modelId: string): string {
-  const model = DEFAULT_COPILOT_MODELS.find(m => m.id === modelId);
+  const model = COPILOT_MODELS.find(m => m.id === modelId);
   return model?.name || modelId;
 }

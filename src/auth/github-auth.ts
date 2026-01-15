@@ -165,13 +165,32 @@ export async function validateGitHubToken(token: string): Promise<TokenValidatio
 
     const scopes = response.headers.get('x-oauth-scopes')?.split(', ').filter(s => s.trim()) || [];
 
-    // Check for required copilot scope
-    const hasCopilotScope = scopes.includes('copilot');
+    // Check for required copilot scope (classic tokens)
+    // Fine-grained tokens don't return x-oauth-scopes header, so we need to test actual access
+    let hasCopilotScope = scopes.includes('copilot');
+    
+    // If no scopes returned (fine-grained token), try to verify GitHub Models access directly
+    if (scopes.length === 0 || !hasCopilotScope) {
+      try {
+        // Test GitHub Models API directly - this will succeed if the token has access
+        const modelsResponse = await fetch('https://models.inference.ai.azure.com/models', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'User-Agent': 'ClusterCode-CLI',
+          },
+        });
+        hasCopilotScope = modelsResponse.ok;
+      } catch (error) {
+        // Models API access not available
+        hasCopilotScope = false;
+      }
+    }
     
     return {
       valid: true,
       user,
-      scopes,
+      scopes: scopes.length > 0 ? scopes : ['fine-grained-token'],
       hasCopilotScope,
     };
   } catch (error: any) {
@@ -183,38 +202,38 @@ export async function validateGitHubToken(token: string): Promise<TokenValidatio
 }
 
 /**
- * Test connection to GitHub Copilot API
+ * Test connection to GitHub Models API (via Azure inference)
  */
 export async function testCopilotConnection(token: string): Promise<{ success: boolean; message: string }> {
   try {
-    // First, get a Copilot token
-    const copilotToken = await getCopilotToken(token);
-
-    // Test the Copilot API
-    const response = await fetch('https://api.githubcopilot.com/models', {
+    // Test GitHub Models API directly with PAT
+    const response = await fetch('https://models.inference.ai.azure.com/models', {
       headers: {
-        'Authorization': `Bearer ${copilotToken}`,
+        'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
         'User-Agent': 'ClusterCode-CLI',
-        'Editor-Version': 'vscode/1.85.0',
-        'Editor-Plugin-Version': 'copilot/1.0.0',
       },
     });
 
     if (response.ok) {
       return {
         success: true,
-        message: 'Successfully connected to GitHub Copilot API',
+        message: 'Successfully connected to GitHub Models API',
       };
     } else if (response.status === 401) {
       return {
         success: false,
-        message: 'GitHub token does not have Copilot access. Make sure you have an active Copilot subscription.',
+        message: 'GitHub token is invalid or expired. Please create a new token.',
+      };
+    } else if (response.status === 403) {
+      return {
+        success: false,
+        message: 'GitHub token does not have access to GitHub Models. Make sure you have an active Copilot subscription.',
       };
     } else {
       return {
         success: false,
-        message: `Copilot API error: ${response.statusText}`,
+        message: `GitHub Models API error: ${response.status} ${response.statusText}`,
       };
     }
   } catch (error: any) {
@@ -374,16 +393,20 @@ export async function setManualToken(token: string): Promise<OAuthResult> {
     // Check for required copilot scope
     if (!validation.hasCopilotScope) {
       spinner.fail('Token missing required scope');
-      console.log(chalk.red('\n❌ Token is missing the required "copilot" scope'));
-      console.log(chalk.yellow('\nTo use GitHub Copilot, your token must have the "copilot" scope.'));
-      console.log(chalk.cyan('\nPlease create a new token with the following scopes:'));
-      console.log(chalk.white('  ✅ ') + chalk.bold('copilot') + chalk.gray(' - Access GitHub Copilot API'));
-      console.log(chalk.white('  ✅ ') + chalk.bold('user:email') + chalk.gray(' - Read user email'));
-      console.log(chalk.cyan('\nCreate a token at: ') + chalk.white('https://github.com/settings/tokens\n'));
+      console.log(chalk.red('\n❌ Token cannot access GitHub Copilot API'));
+      console.log(chalk.yellow('\n⚠️  Fine-grained tokens do NOT work with Copilot API.'));
+      console.log(chalk.yellow('    You must use a Classic personal access token.\n'));
+      console.log(chalk.cyan('To create a Classic token:'));
+      console.log(chalk.white('  1. Go to: ') + chalk.underline('https://github.com/settings/tokens/new'));
+      console.log(chalk.white('  2. Select "') + chalk.bold('Generate new token (classic)') + chalk.white('"'));
+      console.log(chalk.white('  3. Check the following scopes:'));
+      console.log(chalk.white('     ✅ ') + chalk.bold('copilot') + chalk.gray(' - Access GitHub Copilot API'));
+      console.log(chalk.white('     ✅ ') + chalk.bold('user:email') + chalk.gray(' - Read user email (optional)'));
+      console.log(chalk.white('  4. Click "Generate token" and copy it\n'));
       
       return {
         success: false,
-        error: 'Token missing required "copilot" scope',
+        error: 'Token cannot access Copilot API. Use a Classic token with "copilot" scope.',
       };
     }
 

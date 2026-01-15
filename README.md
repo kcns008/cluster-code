@@ -6,6 +6,12 @@
 
 AI-powered CLI tool for Kubernetes and OpenShift cluster management with intelligent diagnostics, multi-cloud support, and GitOps workflows.
 
+## 🎬 Demo
+
+https://github.com/user-attachments/assets/cluster-code.mp4
+
+<video src="docs/cluster-code.mp4" controls width="100%"></video>
+
 ## ⚡ Quick Start
 
 ### Install
@@ -41,12 +47,15 @@ That's it! Start chatting with your cluster in plain English.
 ## ✨ Key Features
 
 - 💬 **Natural Language Interface** - Control your cluster using plain English
+- 🤖 **Agentic Mode** - Autonomous execution with Claude Agent SDK
 - 🔍 **AI-Powered Diagnostics** - Intelligent troubleshooting with K8sGPT
 - ☁️ **Multi-Cloud Support** - AWS EKS, Azure AKS/ARO, GCP GKE
 - 🚀 **GitOps Ready** - Helm, Kustomize, ArgoCD, Flux integration
 - 🔒 **Local LLM Support** - Use Ollama for complete data privacy
 - 🎯 **OpenShift Native** - Routes, Operators, BuildConfigs support
 - 🤖 **RL-Based Management** - Optional PufferLib integration for training AI agents
+- 🔐 **GitHub Copilot Integration** - OAuth authentication and multi-model support
+- 🖥️ **Multiple UI Modes** - Interactive, TUI, and legacy chat modes
 
 ## 📚 Documentation
 
@@ -60,14 +69,33 @@ That's it! Start chatting with your cluster in plain English.
 
 ## 💡 Usage Examples
 
-### Interactive Mode (Primary)
+### Interactive Mode (Default)
 
 ```bash
+# Start interactive natural language interface
 $ cluster-code
+# or explicitly
+$ cluster-code interactive
 
 You: Show me all pods that are failing
 You: Why is my deployment crashing?
 You: Scale my app to 5 replicas
+```
+
+### Agentic Mode (Autonomous Execution)
+
+```bash
+# Start agentic mode with Claude Agent SDK (Claude-only)
+$ cluster-code agent
+# or with a specific task
+$ cluster-code agent "Fix all failing pods in the cluster"
+```
+
+### TUI Mode
+
+```bash
+# Start terminal user interface
+$ cluster-code ui
 ```
 
 ### Direct Commands
@@ -76,14 +104,37 @@ You: Scale my app to 5 replicas
 # Run cluster diagnostics
 cluster-code diagnose
 
-# Analyze specific resources
-cluster-code analyze pod my-pod
+# Show cluster and CLI info
+cluster-code info
 
-# Deploy with Helm
-cluster-code helm-deploy --chart ./my-chart --release my-app
+# Initialize cluster connection
+cluster-code init
 
-# Create cloud cluster
-cluster-code azure-cluster-create --type aks --name prod-aks
+# Run first-time setup wizard
+cluster-code setup
+```
+
+### Model & Authentication Management
+
+```bash
+# Configure model interactively
+cluster-code --configure-model
+
+# List available models
+cluster-code --list-models
+
+# Use a specific model for this session
+cluster-code --model gpt-4
+
+# Set default model permanently
+cluster-code --set-default-model claude-3-opus
+
+# GitHub Copilot authentication
+cluster-code --setup-github
+cluster-code --show-auth
+cluster-code --whoami
+cluster-code --test-connection
+cluster-code --logout-github
 ```
 
 ### Reinforcement Learning (Optional)
@@ -103,7 +154,43 @@ cluster-code rl diagnose
 
 See the [PufferLib RL Guide](./docs/guides/pufferlib-rl.md) for details.
 
-## 🔌 Plugin Architecture
+## � CLI Reference
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `init` | Initialize cluster connection |
+| `diagnose` | Run comprehensive cluster diagnostics |
+| `info` | Show cluster and CLI tool information |
+| `chat` | Start interactive troubleshooting session (legacy mode) |
+| `interactive` / `i` | Start interactive natural language interface (default) |
+| `agent` / `a` | Start agentic mode with Claude Agent SDK (autonomous execution) |
+| `ui` | Start TUI mode |
+| `config` | Manage cluster-code configuration |
+| `rl` | Manage PufferLib RL environment |
+| `github` | Manage GitHub Copilot authentication and settings |
+| `model` | Manage AI model selection |
+| `whoami` | Show GitHub user info and current model |
+| `setup` | Run first-time setup wizard |
+| `version` | Show version information |
+
+### Global Options
+
+| Option | Description |
+|--------|-------------|
+| `--setup-github` | Start GitHub OAuth authentication flow |
+| `--github-token <token>` | Set GitHub token manually |
+| `--configure-model` | Interactive model selection |
+| `--show-auth` | Display current authentication status |
+| `--list-models` | Show all available models |
+| `--whoami` | Show GitHub user info and current model |
+| `--logout-github` | Remove GitHub credentials |
+| `--test-connection` | Test GitHub Copilot API access |
+| `--model <model>` | Use a specific model for this session |
+| `--set-default-model <model>` | Set the default model permanently |
+
+## �🔌 Plugin Architecture
 
 - **cluster-core** - Core Kubernetes operations
 - **k8sgpt-analyzers** - AI-powered diagnostics

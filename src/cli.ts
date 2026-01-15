@@ -376,8 +376,9 @@ const githubCmd = program
   .description('Manage GitHub Copilot authentication and settings');
 
 githubCmd
-  .command('setup')
-  .description('Start GitHub OAuth authentication flow')
+  .command('login')
+  .alias('setup')
+  .description('Start GitHub Copilot OAuth authentication flow')
   .action(async () => {
     try {
       await setupGitHubCommand();
@@ -749,6 +750,61 @@ async function handleDefaultBehavior() {
   }
 }
 
+// Handle options passed without a command
+async function handleOptionsOnly(): Promise<boolean> {
+  const args = process.argv.slice(2);
+  
+  // Check for each option
+  if (args.includes('--setup-github')) {
+    await setupGitHubCommand();
+    return true;
+  }
+  
+  const tokenIndex = args.indexOf('--github-token');
+  if (tokenIndex !== -1 && args[tokenIndex + 1]) {
+    await setGitHubTokenCommand(args[tokenIndex + 1]);
+    return true;
+  }
+  
+  if (args.includes('--configure-model')) {
+    await configureModelCommand();
+    return true;
+  }
+  
+  if (args.includes('--show-auth')) {
+    await showAuthCommand();
+    return true;
+  }
+  
+  if (args.includes('--list-models')) {
+    await listModelsCommand();
+    return true;
+  }
+  
+  if (args.includes('--whoami')) {
+    await whoamiCommand();
+    return true;
+  }
+  
+  if (args.includes('--logout-github')) {
+    await logoutGitHubCommand();
+    return true;
+  }
+  
+  if (args.includes('--test-connection')) {
+    await testConnectionCommand();
+    return true;
+  }
+  
+  const defaultModelIndex = args.indexOf('--set-default-model');
+  if (defaultModelIndex !== -1 && args[defaultModelIndex + 1]) {
+    setDefaultModelCommand(args[defaultModelIndex + 1]);
+    return true;
+  }
+  
+  return false;
+}
+
 // Handle default behavior when no command provided
 if (process.argv.length === 2) {
   handleDefaultBehavior().catch(error => {
@@ -756,6 +812,23 @@ if (process.argv.length === 2) {
     process.exit(1);
   });
 } else {
-  // Parse arguments for other commands
-  program.parse(process.argv);
+  // First check if only options were passed (no command)
+  const hasCommand = process.argv.slice(2).some(arg => !arg.startsWith('-'));
+  
+  if (!hasCommand) {
+    // Only options were passed
+    handleOptionsOnly().then(handled => {
+      if (!handled) {
+        // Unknown option or parse error - let commander handle it
+        program.parse(process.argv);
+      }
+      process.exit(0);
+    }).catch(error => {
+      logger.error(error.message);
+      process.exit(1);
+    });
+  } else {
+    // Parse arguments for commands
+    program.parse(process.argv);
+  }
 }
