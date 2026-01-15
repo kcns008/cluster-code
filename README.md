@@ -4,13 +4,12 @@
 
 [Cluster Code]: https://img.shields.io/badge/Cluster%20Code-v1.0.0-brightgreen.svg?style=flat-square
 
+
 AI-powered CLI tool for Kubernetes and OpenShift cluster management with intelligent diagnostics, multi-cloud support, and GitOps workflows.
 
 ## 🎬 Demo
 
-https://github.com/user-attachments/assets/cluster-code.mp4
-
-<video src="docs/cluster-code.mp4" controls width="100%"></video>
+![Demo GIF](docs/cluster-code.gif)
 
 ## ⚡ Quick Start
 
