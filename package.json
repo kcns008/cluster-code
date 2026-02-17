@@ -1,6 +1,6 @@
 {
   "name": "@cluster-code/cluster-code",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "AI-powered CLI tool for building, maintaining, and troubleshooting Kubernetes and OpenShift clusters",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
