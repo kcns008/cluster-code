@@ -4,12 +4,7 @@
 
 [Cluster Code]: https://img.shields.io/badge/Cluster%20Code-v1.0.0-brightgreen.svg?style=flat-square
 
-
-AI-powered CLI tool for Kubernetes and OpenShift cluster management with intelligent diagnostics, multi-cloud support, and GitOps workflows.
-
-## 🎬 Demo
-
-![Demo GIF](docs/cluster-code.gif)
+AI-powered CLI tool for Kubernetes and OpenShift cluster management with intelligent diagnostics, multi-cloud support, and GitOps workflows. Inspired by [pi-mono](https://github.com/badlogic/pi-mono).
 
 ## ⚡ Quick Start
 
@@ -55,6 +50,7 @@ That's it! Start chatting with your cluster in plain English.
 - 🤖 **RL-Based Management** - Optional PufferLib integration for training AI agents
 - 🔐 **GitHub Copilot Integration** - OAuth authentication and multi-model support
 - 🖥️ **Multiple UI Modes** - Interactive, TUI, and legacy chat modes
+- 🪝 **Extensible Hooks System** - Plugin architecture inspired by pi-mono
 
 ## 📚 Documentation
 
@@ -64,6 +60,7 @@ That's it! Start chatting with your cluster in plain English.
 - [LLM Provider Setup](https://kcns008.github.io/cluster-code/guides/llm-providers) - Configure Anthropic, OpenAI, Google, or local models
 - [Getting Started](https://kcns008.github.io/cluster-code/guides/getting-started) - First steps and tutorials
 - [PufferLib RL Guide](./docs/guides/pufferlib-rl.md) - Reinforcement learning for cluster management
+- [Hooks & Plugins](./docs/hooks.md) - Extend cluster-code with custom hooks
 - [API Reference](https://kcns008.github.io/cluster-code/api/commands) - Complete command reference
 
 ## 💡 Usage Examples
@@ -153,43 +150,52 @@ cluster-code rl diagnose
 
 See the [PufferLib RL Guide](./docs/guides/pufferlib-rl.md) for details.
 
-## � CLI Reference
+## 🪝 Hooks System
 
-### Commands
+Cluster-code features an extensible hooks system inspired by [pi-mono](https://github.com/badlogic/pi-mono):
 
-| Command | Description |
-|---------|-------------|
-| `init` | Initialize cluster connection |
-| `diagnose` | Run comprehensive cluster diagnostics |
-| `info` | Show cluster and CLI tool information |
-| `chat` | Start interactive troubleshooting session (legacy mode) |
-| `interactive` / `i` | Start interactive natural language interface (default) |
-| `agent` / `a` | Start agentic mode with Claude Agent SDK (autonomous execution) |
-| `ui` | Start TUI mode |
-| `config` | Manage cluster-code configuration |
-| `rl` | Manage PufferLib RL environment |
-| `github` | Manage GitHub Copilot authentication and settings |
-| `model` | Manage AI model selection |
-| `whoami` | Show GitHub user info and current model |
-| `setup` | Run first-time setup wizard |
-| `version` | Show version information |
+```typescript
+import { hooks, registerHooks } from 'cluster-code';
 
-### Global Options
+// Register custom hooks
+registerHooks([
+  {
+    name: 'before:agent:start',
+    handler: async event => {
+      console.log('Agent starting with:', event.context);
+      return { success: true };
+    },
+    priority: 0,
+  },
+  {
+    name: 'agent:tool:result',
+    handler: async event => {
+      console.log('Tool result:', event.toolName);
+      return { success: true };
+    },
+  },
+]);
+```
 
-| Option | Description |
-|--------|-------------|
-| `--setup-github` | Start GitHub OAuth authentication flow |
-| `--github-token <token>` | Set GitHub token manually |
-| `--configure-model` | Interactive model selection |
-| `--show-auth` | Display current authentication status |
-| `--list-models` | Show all available models |
-| `--whoami` | Show GitHub user info and current model |
-| `--logout-github` | Remove GitHub credentials |
-| `--test-connection` | Test GitHub Copilot API access |
-| `--model <model>` | Use a specific model for this session |
-| `--set-default-model <model>` | Set the default model permanently |
+### Available Hooks
 
-## �🔌 Plugin Architecture
+| Hook                     | Description                 |
+| ------------------------ | --------------------------- |
+| `before:agent:start`     | Before agent session starts |
+| `agent:tool:call`        | When a tool is called       |
+| `agent:tool:result`      | After tool execution        |
+| `before:command:execute` | Before command execution    |
+| `after:command:execute`  | After command execution     |
+| `before:diagnostic:run`  | Before diagnostic run       |
+| `diagnostic:result`      | After diagnostic completion |
+| `cluster:connect`        | When connecting to cluster  |
+| `llm:call`               | LLM API call events         |
+| `session:start`          | Session start               |
+| `session:end`            | Session end                 |
+
+See [Hooks Documentation](./docs/hooks.md) for details.
+
+## 🔌 Plugin Architecture
 
 - **cluster-core** - Core Kubernetes operations
 - **k8sgpt-analyzers** - AI-powered diagnostics
@@ -212,6 +218,7 @@ MIT License - see [LICENSE](./LICENSE) for details
 - [Documentation](https://kcns008.github.io/cluster-code)
 - [GitHub Issues](https://github.com/kcns008/cluster-code/issues)
 - [Changelog](./CHANGELOG.md)
+- [pi-mono](https://github.com/badlogic/pi-mono) - Inspiration for hooks system
 
 ---
 
