@@ -4,6 +4,10 @@
 
 [Cluster Code]: https://img.shields.io/badge/Cluster%20Code-v1.0.0-brightgreen.svg?style=flat-square
 
+## 🎬 Demo
+
+![Cluster Code Demo](docs/cluster-code.gif)
+
 AI-powered CLI tool for Kubernetes and OpenShift cluster management with intelligent diagnostics, multi-cloud support, and GitOps workflows. Inspired by [pi-mono](https://github.com/badlogic/pi-mono).
 
 ## ⚡ Quick Start
